@@ -168,7 +168,7 @@ def _print_state(state: ThinkTankState) -> None:
 
 def main() -> None:
     """Run the Think Tank multi-agent deliberation system."""
-    # 1. Load .env (OPENAI_API_KEY, CHROMA_DB_PATH, etc.)
+    # 1. Load .env (OPENAI_API_KEY, OPENROUTER_API_KEY, CHROMA_DB_PATH, etc.)
     load_dotenv()
 
     if not os.getenv("OPENAI_API_KEY"):
@@ -177,7 +177,12 @@ def main() -> None:
             "Create a .env file or export the variable before running."
         )
 
-    # 2. Build & seed the vector store
+    if not os.getenv("OPENROUTER_API_KEY"):
+        raise SystemExit(
+            "OPENROUTER_API_KEY is not set. "
+            "Create a .env file or export the variable before running."
+        )
+
     vector_store = _get_vector_store()
     _seed_if_empty(vector_store)
 

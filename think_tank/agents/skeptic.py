@@ -5,7 +5,7 @@ from __future__ import annotations
 import typing as t
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_openrouter import ChatOpenRouter
 
 from think_tank.schemas import Challenge, Claim, SkepticOutput
 from think_tank.state import ThinkTankState
@@ -110,8 +110,8 @@ def skeptic_node(state: ThinkTankState) -> dict:
     human_content = "\n\n".join(context_parts)
 
     # --- 3. LLM call with structured output ---
-    model_name = config.get("skeptic_model", "gpt-4o")
-    llm = ChatOpenAI(model=model_name, temperature=0.3)
+    model_name = config.get("skeptic_model", "openai/gpt-4o")
+    llm = ChatOpenRouter(model=model_name, temperature=0.3)
     structured_llm = llm.with_structured_output(SkepticOutput, method="json_schema")
 
     output = t.cast(SkepticOutput, structured_llm.invoke([
