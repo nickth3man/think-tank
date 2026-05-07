@@ -28,9 +28,7 @@ from typing import Any
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
-
 load_dotenv()
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Embedded single-page frontend.
@@ -2482,18 +2480,19 @@ _SEED_DOCUMENTS = [
 def _get_vector_store():
     from langchain_chroma import Chroma
     from langchain_openai import OpenAIEmbeddings
+    from pydantic import SecretStr
 
+    api_key = os.getenv("OPENROUTER_API_KEY")
     return Chroma(
         collection_name="think_tank_kb",
         embedding_function=OpenAIEmbeddings(
             base_url="https://openrouter.ai/api/v1",
-            api_key=os.getenv("OPENROUTER_API_KEY"),
+            api_key=SecretStr(api_key) if api_key else None,
             model=os.getenv("OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small"),
             check_embedding_ctx_length=False,
         ),
         persist_directory=os.getenv("CHROMA_DB_PATH", "./chroma_db"),
     )
-
 
 def _seed_if_empty(vs) -> None:
     from langchain_core.documents import Document
@@ -2565,8 +2564,9 @@ def _payload_size(obj: Any) -> int:
 class _StreamAdapter:
     """Walks the LangGraph state stream and emits structured dashboard events."""
 
-    def __init__(self) -> None:
+    def __init__(self, run_id: str) -> None:
         self.seen_claims: set[str] = set()
+        self.run_id = run_id
         self.seen_challenges: set[str] = set()
         self.seen_ideas: set[str] = set()
         self.seen_syntheses: set[str] = set()
@@ -2688,7 +2688,7 @@ class _StreamAdapter:
         final = state_after.get("synthesis")
         if final is not None:
             payload = {
-                "run_id": "live",
+                "run_id": self.run_id,
                 "rounds": rnd,
                 "alignment_score": getattr(final, "alignment_score", align or 0.0),
                 "status": "CONVERGED",
@@ -2775,9 +2775,10 @@ async def observe(ws: WebSocket) -> None:
                            edge={"from": "orchestrator", "to": "researcher", "kind": "dispatch",
                                  "size": _payload_size(initial_state), "rtt": 4, "status": "success"}))
 
-    adapter = _StreamAdapter()
+    adapter = _StreamAdapter(run_id)
     last_state = initial_state
 
+    stream_error: str | None = None
     try:
         async for chunk in graph.astream(initial_state, stream_mode="updates"):
             # chunk is { node_name: state_delta }
@@ -2800,15 +2801,17 @@ async def observe(ws: WebSocket) -> None:
     except Exception as e:
         await ws.send_json(_ev("ERROR", "system", "graph.exception",
                                {"reason": str(e), "type": type(e).__name__}))
+        stream_error = str(e)
 
     await ws.send_json(_ev("INFO", "system", "stream.end",
-                           {"run_id": run_id, "status": "ok"}))
+                           {"run_id": run_id, "status": "ok" if stream_error is None else "error",
+                           **({"reason": stream_error} if stream_error is not None else {})}))
     try:
         await ws.close()
-    except Exception:  # noqa: S110 – already disconnected, swallow close errors
+    except Exception:  # nosec B110  # already disconnected, swallow close errors
         pass
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "7860")))
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "7860")))  # nosec B104

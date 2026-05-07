@@ -70,14 +70,13 @@ ignore = [
     "S101",   # assert statements (fine in tests)
     "S105",   # hardcoded passwords (false positives in config)
     "RUF001", # ambiguous Unicode in strings — HTML/JS/CSS content exempt
-    "RUF003", # EN DASH in comments — cosmetic
     "E501",   # line too long — handled by formatter for code; HTML strings exempt
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S106", "PT011"]
 "main.py" = ["S104"]
-"app.py" = ["S104"]
+"app.py" = ["S104", "S110", "C901"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12
