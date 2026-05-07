@@ -17,6 +17,7 @@ from think_tank.arbiter import (
     route_after_arbiter,
 )
 from think_tank.schemas import Claim, Stance, Synthesis
+from think_tank.state import ThinkTankState
 
 # ---------------------------------------------------------------------------
 # _cosine_similarity
@@ -174,7 +175,7 @@ class TestArbiterNode:
         challenges: list | None = None,
         current_round: int = 2,
         config: dict | None = None,
-    ) -> dict:
+    ) -> ThinkTankState:
         return {
             "topic": "Should remote work be the default?",
             "claims": claims or [],
@@ -248,7 +249,6 @@ class TestArbiterNode:
 # ---------------------------------------------------------------------------
 
 
-class TestRouteAfterArbiter:
     def test_routes_to_end_when_synthesis_present(self) -> None:
         synthesis = Synthesis(
             content="Final merged position on the topic.",
@@ -256,9 +256,31 @@ class TestRouteAfterArbiter:
             alignment_score=0.85,
             rounds_taken=3,
         )
-        state = {"synthesis": synthesis}
+        state: ThinkTankState = {
+            "topic": "test",
+            "config": {},
+            "claims": [],
+            "challenges": [],
+            "expansions": [],
+            "syntheses": [],
+            "current_round": 0,
+            "alignment_score": 0.0,
+            "expansion": None,
+            "synthesis": synthesis,
+        }
         assert route_after_arbiter(state) == "__end__"
 
     def test_routes_to_researcher_when_no_synthesis(self) -> None:
-        state = {"synthesis": None}
+        state: ThinkTankState = {
+            "topic": "test",
+            "config": {},
+            "claims": [],
+            "challenges": [],
+            "expansions": [],
+            "syntheses": [],
+            "current_round": 0,
+            "alignment_score": 0.0,
+            "expansion": None,
+            "synthesis": None,
+        }
         assert route_after_arbiter(state) == "researcher"

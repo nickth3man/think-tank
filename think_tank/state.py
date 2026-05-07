@@ -29,6 +29,6 @@ class ThinkTankState(TypedDict):
 
     # --- Arbiter outputs (written each round) ---
     current_round: int
-    alignment_score: float  # 0.0 – 1.0
+    alignment_score: float  # 0.0 - 1.0
     expansion: Expansion | None  # Set when routing back to agents (arbiter directive)
     synthesis: Synthesis | None  # Set when routing to END (final output)
