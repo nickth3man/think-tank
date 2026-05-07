@@ -126,25 +126,29 @@ def researcher_node(state: ThinkTankState) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Knowledge-base stub — replace with real Chroma retriever in production
+# Knowledge-base retrieval (Chroma + OpenAIEmbeddings)
 # ---------------------------------------------------------------------------
 
-def _query_knowledge_base(topic: str, state: ThinkTankState) -> str:
+def _query_knowledge_base(topic: str, state: ThinkTankState) -> str:  # noqa: ARG001
     """
-    Retrieve relevant documents from the vector store.
+    Retrieve relevant documents from the Chroma vector store.
 
-    In production, wire this to:
-        from langchain_chroma import Chroma
-        from langchain_openai import OpenAIEmbeddings
-        vector_store = Chroma(
-            collection_name="think_tank_kb",
-            embedding_function=OpenAIEmbeddings(),
-        )
-        results = vector_store.similarity_search(topic, k=5)
-        return "\n".join(doc.page_content for doc in results)
+    Uses ``CHROMA_DB_PATH`` environment variable (default ``./chroma_db``) to
+    locate the persistent Chroma database. Falls back to a stub message when
+    no documents are found.
     """
-    # Stub: return the topic itself so the agent still functions in testing.
-    return (
-        f"[Knowledge base stub] No pre-indexed documents found for: {topic!r}. "
-        "Replace this stub with a real Chroma vector-store retriever."
+    import os
+
+    from langchain_chroma import Chroma
+    from langchain_openai import OpenAIEmbeddings
+
+    db_path = os.getenv("CHROMA_DB_PATH", "./chroma_db")
+    vector_store = Chroma(
+        collection_name="think_tank_kb",
+        embedding_function=OpenAIEmbeddings(),
+        persist_directory=db_path,
     )
+    results = vector_store.similarity_search(topic, k=5)
+    if not results:
+        return f"No pre-indexed documents found for: {topic!r}."
+    return "\n".join(doc.page_content for doc in results)
