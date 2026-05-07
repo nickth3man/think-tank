@@ -35,7 +35,7 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
 def _pairwise_alignment(claims: list[Claim]) -> float:
     """Mean pairwise cosine similarity across all agent claims in the latest round."""
     if len(claims) < 2:
-        return 1.0  # single agent → trivially aligned
+        return 1.0  # single agent -> trivially aligned
 
     scores: list[float] = []
     for i in range(len(claims)):
@@ -69,7 +69,7 @@ def _find_weak_dimensions(claims: list[Claim]) -> list[str]:
     for claim in claims:
         for dim, value in claim.dimensions.items():
             distinct.setdefault(dim, set()).add(value)
-    # Sort by number of distinct values descending → most disagreement first
+    # Sort by number of distinct values descending -> most disagreement first
     ranked = sorted(distinct.items(), key=lambda kv: len(kv[1]), reverse=True)
     return [dim for dim, vals in ranked if len(vals) > 1][:3]  # top 3 weak spots
 
@@ -126,7 +126,7 @@ def arbiter_node(state: ThinkTankState) -> dict:
     forced_end = current_round >= max_rounds
 
     if converged or forced_end:
-        # === PRODUCE SYNTHESIS → route to END ===
+        # === PRODUCE SYNTHESIS -> route to END ===
         verdict = "forced" if forced_end and not converged else "natural"
         synthesis_content = _build_synthesis_content(
             topic, latest_claims, challenges, verdict
@@ -147,7 +147,7 @@ def arbiter_node(state: ThinkTankState) -> dict:
             "current_round": current_round + 1,
         }
 
-    # === PRODUCE EXPANSION → route back to researcher ===
+    # === PRODUCE EXPANSION -> route back to researcher ===
     weak_dims = _find_weak_dimensions(latest_claims)
     if not weak_dims:
         weak_dims = ["overall reasoning"]
@@ -205,7 +205,7 @@ def _summarize_disagreement(
     active = [c for c in challenges if not c.resolved]
     if not active:
         return "All challenges resolved — alignment should be high."
-    lines = [f"{c.agent_id} → claim {c.target_claim_id[:8]}… ({c.stance.value}): {c.content[:120]}"
+    lines = [f"{c.agent_id} -> claim {c.target_claim_id[:8]}... ({c.stance.value}): {c.content[:120]}"
              for c in active[:5]]
     return "Unresolved challenges:\n" + "\n".join(lines)
 

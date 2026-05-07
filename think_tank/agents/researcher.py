@@ -81,7 +81,7 @@ def researcher_node(state: ThinkTankState) -> dict:
     Flow:
         1. Read topic, round, and any arbiter expansion directive.
         2. Retrieve relevant documents from the vector knowledge base.
-        3. Call the LLM with structured output → ResearcherOutput.
+        3. Call the LLM with structured output -> ResearcherOutput.
         4. Hydrate a full Claim and return a partial state update.
     """
     topic: str = state["topic"]

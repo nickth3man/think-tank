@@ -68,7 +68,7 @@ def synthesizer_node(state: ThinkTankState) -> dict:
 
     Flow:
         1. Read claims, challenges, and lateral ideas from the current round.
-        2. Call the LLM with structured output → SynthesizerOutput.
+        2. Call the LLM with structured output -> SynthesizerOutput.
         3. Hydrate a full SynthesisAttempt and return a partial state update.
     """
     topic: str = state["topic"]
@@ -98,7 +98,7 @@ def synthesizer_node(state: ThinkTankState) -> dict:
 
     if current_challenges:
         challenge_lines = [
-            f"- [{ch.agent_id} → claim {ch.target_claim_id[:8]}…, {ch.stance.value}]\n"
+            f"- [{ch.agent_id} -> claim {ch.target_claim_id[:8]}..., {ch.stance.value}]\n"
             f"  {ch.content}"
             for ch in current_challenges
         ]

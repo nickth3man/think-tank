@@ -56,7 +56,7 @@ def skeptic_node(state: ThinkTankState) -> dict:
 
     Flow:
         1. Read claims from the current round.
-        2. Call the LLM with structured output → SkepticOutput.
+        2. Call the LLM with structured output -> SkepticOutput.
         3. Hydrate a full Challenge and return a partial state update.
     """
     topic: str = state["topic"]

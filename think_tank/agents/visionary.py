@@ -59,7 +59,7 @@ def visionary_node(state: ThinkTankState) -> dict:
 
     Flow:
         1. Read claims and challenges from the current round.
-        2. Call the LLM with structured output → VisionaryOutput.
+        2. Call the LLM with structured output -> VisionaryOutput.
         3. Hydrate a full LateralIdea and return a partial state update.
     """
     topic: str = state["topic"]
@@ -85,7 +85,7 @@ def visionary_node(state: ThinkTankState) -> dict:
 
     if current_challenges:
         challenge_lines = [
-            f"- [{ch.agent_id} → {ch.stance.value}] {ch.content[:200]}"
+            f"- [{ch.agent_id} -> {ch.stance.value}] {ch.content[:200]}"
             for ch in current_challenges
         ]
         context_parts.append("## Current Challenges\n" + "\n".join(challenge_lines))

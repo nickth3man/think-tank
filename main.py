@@ -1,13 +1,14 @@
 """main.py — Run the Think Tank multi-agent deliberation system.
 
 Loads environment variables (python-dotenv), seeds the Chroma vector store
-with dummy knowledge-base documents when it is empty, then executes a full
-deliberation cycle on a sample topic using the LangGraph pipeline.
+with dummy knowledge-base documents when it is empty, then prompts for a topic
+and executes a full deliberation cycle using the LangGraph pipeline.
 """
 
 from __future__ import annotations
 
 import os
+import sys
 import textwrap
 import typing as t
 
@@ -91,7 +92,7 @@ def _seed_if_empty(vector_store: Chroma) -> None:
         print("[seed] Chroma collection already has documents — skipping seed.\n")
         return
 
-    print(f"[seed] Populating Chroma with {len(_SEED_DOCUMENTS)} dummy documents …")
+    print(f"[seed] Populating Chroma with {len(_SEED_DOCUMENTS)} dummy documents ...")
     from langchain_core.documents import Document
 
     documents = [
@@ -131,7 +132,7 @@ def _print_state(state: ThinkTankState) -> None:
     if challenges:
         print(f"\n  Challenges ({len(challenges)}):")
         for ch in challenges:
-            print(f"    [{ch.agent_id} → {ch.stance.value}] target={ch.target_claim_id[:8]}…")
+            print(f"    [{ch.agent_id} -> {ch.stance.value}] target={ch.target_claim_id[:8]}...")
             print(f"      {textwrap.shorten(ch.content, width=120)}")
 
     # Lateral ideas
@@ -163,7 +164,7 @@ def _print_state(state: ThinkTankState) -> None:
     # Expansion directive (if looping)
     expansion = state.get("expansion")
     if expansion is not None:
-        print(f"\n  Arbiter Directive → loop back for round {expansion.round}")
+        print(f"\n  Arbiter Directive -> loop back for round {expansion.round}")
         print(f"    Focus: {', '.join(expansion.focus_dimensions)}")
 
 
@@ -189,8 +190,15 @@ def main() -> None:
     # 3. Build the LangGraph
     graph = build_think_tank_graph()
 
-    # 4. Define the deliberation topic and initial state
-    topic = "The impact of remote work on productivity"
+    # 4. Define the deliberation topic (CLI args or interactive prompt)
+    if len(sys.argv) > 1:
+        topic = " ".join(sys.argv[1:]).strip()
+    else:
+        topic = input("Enter the topic or task for the Think Tank: ").strip()
+
+    if not topic:
+        raise SystemExit("No topic provided. Pass it as a CLI argument or enter it when prompted.")
+
     initial_state: ThinkTankState = {
         "topic": topic,
         "config": {
