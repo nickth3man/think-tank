@@ -2,14 +2,48 @@
 
 from __future__ import annotations
 
+import os
 import typing as t
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openrouter import ChatOpenRouter
+from langchain_openai import OpenAIEmbeddings
+from langchain_chroma import Chroma
 
 from think_tank.schemas import Claim, ResearcherOutput
 from think_tank.state import ThinkTankState
 
+_embedder = None
+_vector_store = None
+_llm = None
+
+def _get_embedder() -> OpenAIEmbeddings:
+    global _embedder
+    if _embedder is None:
+        _embedder = OpenAIEmbeddings(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            model=os.getenv("OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small"),
+            check_embedding_ctx_length=False
+        )
+    return _embedder
+
+def _get_vector_store() -> Chroma:
+    global _vector_store
+    if _vector_store is None:
+        db_path = os.getenv("CHROMA_DB_PATH", "./chroma_db")
+        _vector_store = Chroma(
+            collection_name="think_tank_kb",
+            embedding_function=_get_embedder(),
+            persist_directory=db_path,
+        )
+    return _vector_store
+
+def _get_llm(model_name: str) -> ChatOpenRouter:
+    global _llm
+    if _llm is None or _llm.model_name != model_name:
+        _llm = ChatOpenRouter(model=model_name, temperature=0.2)
+    return _llm
 # ---------------------------------------------------------------------------
 # System Prompt
 # ---------------------------------------------------------------------------
@@ -94,17 +128,11 @@ def researcher_node(state: ThinkTankState) -> dict:
 
     context_parts.append(f"## Current Round\n{current_round}")
 
-    # --- 2. Query the vector knowledge base ---
-    # (In production, swap this stub for a real Chroma retriever call.)
-    evidence_text = _query_knowledge_base(topic, state)
-
-    context_parts.append(f"## Retrieved Evidence\n{evidence_text}")
-
     human_content = "\n\n".join(context_parts)
 
     # --- 3. LLM call with structured output ---
-    model_name = config.get("researcher_model", "openai/gpt-4o")
-    llm = ChatOpenRouter(model=model_name, temperature=0.2)
+    model_name = config.get("researcher_model", os.getenv("DEFAULT_CHAT_MODEL", "google/gemini-3.1-flash-lite"))
+    llm = _get_llm(model_name)
     structured_llm = llm.with_structured_output(ResearcherOutput, method="json_schema")
 
     output = t.cast(ResearcherOutput, structured_llm.invoke([
@@ -112,7 +140,9 @@ def researcher_node(state: ThinkTankState) -> dict:
         HumanMessage(content=human_content),
     ]))
 
-    # --- 4. Hydrate the full Claim ---
+    # Compute embedding for the claim
+    claim_embedding = _get_embedder().embed_query(output.content)
+
     claim = Claim(
         agent_id=_agent_id,
         round=current_round,
@@ -120,6 +150,7 @@ def researcher_node(state: ThinkTankState) -> dict:
         dimensions=output.dimensions,
         confidence=output.confidence,
         evidence_summary=output.evidence_summary,
+        embedding=claim_embedding,
     )
 
     return {"claims": existing_claims + [claim]}
@@ -132,22 +163,8 @@ def researcher_node(state: ThinkTankState) -> dict:
 def _query_knowledge_base(topic: str, state: ThinkTankState) -> str:  # noqa: ARG001
     """
     Retrieve relevant documents from the Chroma vector store.
-
-    Uses ``CHROMA_DB_PATH`` environment variable (default ``./chroma_db``) to
-    locate the persistent Chroma database. Falls back to a stub message when
-    no documents are found.
     """
-    import os
-
-    from langchain_chroma import Chroma
-    from langchain_openai import OpenAIEmbeddings
-
-    db_path = os.getenv("CHROMA_DB_PATH", "./chroma_db")
-    vector_store = Chroma(
-        collection_name="think_tank_kb",
-        embedding_function=OpenAIEmbeddings(),
-        persist_directory=db_path,
-    )
+    vector_store = _get_vector_store()
     results = vector_store.similarity_search(topic, k=5)
     if not results:
         return f"No pre-indexed documents found for: {topic!r}."

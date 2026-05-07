@@ -103,11 +103,12 @@ def arbiter_node(state: ThinkTankState) -> dict:
 
     # --- Filter claims to the CURRENT round only ---
     latest_claims = [c for c in claims if c.round == current_round]
+    latest_challenges = [c for c in challenges if c.round == current_round]
 
     # --- Compute alignment components ---
     semantic_alignment = _pairwise_alignment(latest_claims)
-    resolution_rate = _challenge_resolution_rate(challenges)
-    opposition = _opposition_ratio(challenges)
+    resolution_rate = _challenge_resolution_rate(latest_challenges)
+    opposition = _opposition_ratio(latest_challenges)
 
     # Weighted composite: semantic similarity is primary, penalize unresolved opposition
     alignment_score = (

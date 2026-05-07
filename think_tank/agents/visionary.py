@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import typing as t
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -110,7 +111,7 @@ def visionary_node(state: ThinkTankState) -> dict:
     human_content = "\n\n".join(context_parts)
 
     # --- 2. LLM call with structured output ---
-    model_name = config.get("visionary_model", "openai/gpt-4o")
+    model_name = config.get("visionary_model", os.getenv("DEFAULT_CHAT_MODEL", "google/gemini-3.1-flash-lite"))
     llm = ChatOpenRouter(model=model_name, temperature=0.7)  # higher temp for creativity
     structured_llm = llm.with_structured_output(VisionaryOutput, method="json_schema")
 
