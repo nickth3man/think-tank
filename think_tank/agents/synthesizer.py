@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import typing as t
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_openrouter import ChatOpenRouter
 
 from think_tank.schemas import (
     Challenge,
@@ -67,7 +68,7 @@ def synthesizer_node(state: ThinkTankState) -> dict:
 
     Flow:
         1. Read claims, challenges, and lateral ideas from the current round.
-        2. Call the LLM with structured output → SynthesizerOutput.
+        2. Call the LLM with structured output -> SynthesizerOutput.
         3. Hydrate a full SynthesisAttempt and return a partial state update.
     """
     topic: str = state["topic"]
@@ -97,7 +98,7 @@ def synthesizer_node(state: ThinkTankState) -> dict:
 
     if current_challenges:
         challenge_lines = [
-            f"- [{ch.agent_id} → claim {ch.target_claim_id[:8]}…, {ch.stance.value}]\n"
+            f"- [{ch.agent_id} -> claim {ch.target_claim_id[:8]}..., {ch.stance.value}]\n"
             f"  {ch.content}"
             for ch in current_challenges
         ]
@@ -105,8 +106,7 @@ def synthesizer_node(state: ThinkTankState) -> dict:
 
     if current_expansions:
         expansion_lines = [
-            f"- (ID: {e.id}) {e.content}\n"
-            f"  Novelty: {e.novelty_rationale[:200]}"
+            f"- (ID: {e.id}) {e.content}\n  Novelty: {e.novelty_rationale[:200]}"
             for e in current_expansions
         ]
         context_parts.append("## Lateral Ideas This Round\n" + "\n".join(expansion_lines))
@@ -139,14 +139,21 @@ def synthesizer_node(state: ThinkTankState) -> dict:
     human_content = "\n\n".join(context_parts)
 
     # --- 2. LLM call with structured output ---
-    model_name = config.get("synthesizer_model", "gpt-4o")
-    llm = ChatOpenAI(model=model_name, temperature=0.2)
+    model_name = config.get(
+        "synthesizer_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini")
+    )
+    llm = ChatOpenRouter(model=model_name, temperature=0.2)
     structured_llm = llm.with_structured_output(SynthesizerOutput, method="json_schema")
 
-    output = t.cast(SynthesizerOutput, structured_llm.invoke([
-        SystemMessage(content=SYNTHESIZER_SYSTEM_PROMPT),
-        HumanMessage(content=human_content),
-    ]))
+    output = t.cast(
+        SynthesizerOutput,
+        structured_llm.invoke(
+            [
+                SystemMessage(content=SYNTHESIZER_SYSTEM_PROMPT),
+                HumanMessage(content=human_content),
+            ]
+        ),
+    )
 
     # --- 3. Hydrate full SynthesisAttempt ---
     attempt = SynthesisAttempt(
@@ -159,4 +166,4 @@ def synthesizer_node(state: ThinkTankState) -> dict:
         confidence=output.confidence,
     )
 
-    return {"syntheses": existing_syntheses + [attempt]}
+    return {"syntheses": [*existing_syntheses, attempt]}

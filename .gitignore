@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Chroma persistent DB
+chroma_db/
+
+# Environment variables
+.env

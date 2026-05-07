@@ -2,13 +2,52 @@
 
 from __future__ import annotations
 
+import os
 import typing as t
 
+from langchain_chroma import Chroma
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+from langchain_openrouter import ChatOpenRouter
 
 from think_tank.schemas import Claim, ResearcherOutput
 from think_tank.state import ThinkTankState
+
+_embedder = None
+_vector_store = None
+_llm = None
+
+
+def _get_embedder() -> OpenAIEmbeddings:
+    global _embedder
+    if _embedder is None:
+        _embedder = OpenAIEmbeddings(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            model=os.getenv("OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small"),
+            check_embedding_ctx_length=False,
+        )
+    return _embedder
+
+
+def _get_vector_store() -> Chroma:
+    global _vector_store
+    if _vector_store is None:
+        db_path = os.getenv("CHROMA_DB_PATH", "./chroma_db")
+        _vector_store = Chroma(
+            collection_name="think_tank_kb",
+            embedding_function=_get_embedder(),
+            persist_directory=db_path,
+        )
+    return _vector_store
+
+
+def _get_llm(model_name: str) -> ChatOpenRouter:
+    global _llm
+    if _llm is None or _llm.model_name != model_name:
+        _llm = ChatOpenRouter(model=model_name, temperature=0.2)
+    return _llm
+
 
 # ---------------------------------------------------------------------------
 # System Prompt
@@ -47,7 +86,7 @@ def researcher_node(state: ThinkTankState) -> dict:
     Flow:
         1. Read topic, round, and any arbiter expansion directive.
         2. Retrieve relevant documents from the vector knowledge base.
-        3. Call the LLM with structured output → ResearcherOutput.
+        3. Call the LLM with structured output -> ResearcherOutput.
         4. Hydrate a full Claim and return a partial state update.
     """
     topic: str = state["topic"]
@@ -74,14 +113,10 @@ def researcher_node(state: ThinkTankState) -> dict:
         my_claims = [c for c in existing_claims if c.agent_id == _agent_id]
         my_ids = {c.id for c in my_claims}
         active_challenges = [
-            ch for ch in existing_challenges
-            if ch.target_claim_id in my_ids and not ch.resolved
+            ch for ch in existing_challenges if ch.target_claim_id in my_ids and not ch.resolved
         ]
         if active_challenges:
-            lines = [
-                f"- [{ch.stance.value}] {ch.content}"
-                for ch in active_challenges[-4:]
-            ]
+            lines = [f"- [{ch.stance.value}] {ch.content}" for ch in active_challenges[-4:]]
             context_parts.append("## Challenges to Your Prior Claims\n" + "\n".join(lines))
 
     if arbiter_directive is not None:
@@ -94,25 +129,28 @@ def researcher_node(state: ThinkTankState) -> dict:
 
     context_parts.append(f"## Current Round\n{current_round}")
 
-    # --- 2. Query the vector knowledge base ---
-    # (In production, swap this stub for a real Chroma retriever call.)
-    evidence_text = _query_knowledge_base(topic, state)
-
-    context_parts.append(f"## Retrieved Evidence\n{evidence_text}")
-
     human_content = "\n\n".join(context_parts)
 
     # --- 3. LLM call with structured output ---
-    model_name = config.get("researcher_model", "gpt-4o")
-    llm = ChatOpenAI(model=model_name, temperature=0.2)
+    model_name = config.get(
+        "researcher_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini")
+    )
+    llm = _get_llm(model_name)
     structured_llm = llm.with_structured_output(ResearcherOutput, method="json_schema")
 
-    output = t.cast(ResearcherOutput, structured_llm.invoke([
-        SystemMessage(content=RESEARCHER_SYSTEM_PROMPT),
-        HumanMessage(content=human_content),
-    ]))
+    output = t.cast(
+        ResearcherOutput,
+        structured_llm.invoke(
+            [
+                SystemMessage(content=RESEARCHER_SYSTEM_PROMPT),
+                HumanMessage(content=human_content),
+            ]
+        ),
+    )
 
-    # --- 4. Hydrate the full Claim ---
+    # Compute embedding for the claim
+    claim_embedding = _get_embedder().embed_query(output.content)
+
     claim = Claim(
         agent_id=_agent_id,
         round=current_round,
@@ -120,31 +158,23 @@ def researcher_node(state: ThinkTankState) -> dict:
         dimensions=output.dimensions,
         confidence=output.confidence,
         evidence_summary=output.evidence_summary,
+        embedding=claim_embedding,
     )
 
-    return {"claims": existing_claims + [claim]}
+    return {"claims": [*existing_claims, claim]}
 
 
 # ---------------------------------------------------------------------------
-# Knowledge-base stub — replace with real Chroma retriever in production
+# Knowledge-base retrieval (Chroma + OpenAIEmbeddings)
 # ---------------------------------------------------------------------------
+
 
 def _query_knowledge_base(topic: str, state: ThinkTankState) -> str:
     """
-    Retrieve relevant documents from the vector store.
-
-    In production, wire this to:
-        from langchain_chroma import Chroma
-        from langchain_openai import OpenAIEmbeddings
-        vector_store = Chroma(
-            collection_name="think_tank_kb",
-            embedding_function=OpenAIEmbeddings(),
-        )
-        results = vector_store.similarity_search(topic, k=5)
-        return "\n".join(doc.page_content for doc in results)
+    Retrieve relevant documents from the Chroma vector store.
     """
-    # Stub: return the topic itself so the agent still functions in testing.
-    return (
-        f"[Knowledge base stub] No pre-indexed documents found for: {topic!r}. "
-        "Replace this stub with a real Chroma vector-store retriever."
-    )
+    vector_store = _get_vector_store()
+    results = vector_store.similarity_search(topic, k=5)
+    if not results:
+        return f"No pre-indexed documents found for: {topic!r}."
+    return "\n".join(doc.page_content for doc in results)

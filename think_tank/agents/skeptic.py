@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import typing as t
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_openrouter import ChatOpenRouter
 
 from think_tank.schemas import Challenge, Claim, SkepticOutput
 from think_tank.state import ThinkTankState
@@ -55,7 +56,7 @@ def skeptic_node(state: ThinkTankState) -> dict:
 
     Flow:
         1. Read claims from the current round.
-        2. Call the LLM with structured output → SkepticOutput.
+        2. Call the LLM with structured output -> SkepticOutput.
         3. Hydrate a full Challenge and return a partial state update.
     """
     topic: str = state["topic"]
@@ -76,20 +77,18 @@ def skeptic_node(state: ThinkTankState) -> dict:
     context_parts: list[str] = [f"## Topic\n{topic}"]
 
     # Present current-round claims with their IDs so the LLM can target one
-    claim_lines = []
-    for c in current_claims:
-        claim_lines.append(
-            f"### Claim ID: {c.id}\n"
-            f"Agent: {c.agent_id} | Confidence: {c.confidence.value}\n"
-            f"Dimensions: {c.dimensions}\n"
-            f"Content: {c.content}"
-        )
+    claim_lines = [
+        f"### Claim ID: {c.id}\n"
+        f"Agent: {c.agent_id} | Confidence: {c.confidence.value}\n"
+        f"Dimensions: {c.dimensions}\n"
+        f"Content: {c.content}"
+        for c in current_claims
+    ]
     context_parts.append("## Claims to Scrutinise\n" + "\n\n".join(claim_lines))
 
     # Show prior challenges we've raised (for continuity)
     my_prior_challenges = [
-        ch for ch in existing_challenges
-        if ch.agent_id == _agent_id and ch.round < current_round
+        ch for ch in existing_challenges if ch.agent_id == _agent_id and ch.round < current_round
     ]
     if my_prior_challenges:
         lines = [f"- ({ch.stance.value}) {ch.content[:150]}" for ch in my_prior_challenges[-3:]]
@@ -110,14 +109,18 @@ def skeptic_node(state: ThinkTankState) -> dict:
     human_content = "\n\n".join(context_parts)
 
     # --- 3. LLM call with structured output ---
-    model_name = config.get("skeptic_model", "gpt-4o")
-    llm = ChatOpenAI(model=model_name, temperature=0.3)
+    model_name = config.get("skeptic_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini"))
+    llm = ChatOpenRouter(model=model_name, temperature=0.3)
     structured_llm = llm.with_structured_output(SkepticOutput, method="json_schema")
-
-    output = t.cast(SkepticOutput, structured_llm.invoke([
-        SystemMessage(content=SKEPTIC_SYSTEM_PROMPT),
-        HumanMessage(content=human_content),
-    ]))
+    output = t.cast(
+        SkepticOutput,
+        structured_llm.invoke(
+            [
+                SystemMessage(content=SKEPTIC_SYSTEM_PROMPT),
+                HumanMessage(content=human_content),
+            ]
+        ),
+    )
 
     # --- 4. Hydrate the full Challenge ---
     challenge = Challenge(
@@ -129,4 +132,4 @@ def skeptic_node(state: ThinkTankState) -> dict:
         reasoning=output.reasoning,
     )
 
-    return {"challenges": existing_challenges + [challenge]}
+    return {"challenges": [*existing_challenges, challenge]}
