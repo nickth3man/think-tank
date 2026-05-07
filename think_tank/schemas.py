@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class Confidence(StrEnum):
     """Agent's self-reported confidence in a claim."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -22,6 +23,7 @@ class Confidence(StrEnum):
 
 class Stance(StrEnum):
     """Whether a challenge supports, opposes, or refines a claim."""
+
     SUPPORT = "support"
     OPPOSE = "oppose"
     REFINE = "refine"
@@ -29,6 +31,7 @@ class Stance(StrEnum):
 
 class ConvergenceVerdict(StrEnum):
     """Arbiter's final routing decision."""
+
     CONVERGED = "converged"
     DIVERGED = "diverged"
 
@@ -37,6 +40,7 @@ class ConvergenceVerdict(StrEnum):
 # Core Domain Models
 # ---------------------------------------------------------------------------
 
+
 class Claim(BaseModel):
     """An assertion or position put forward by an agent."""
 
@@ -44,15 +48,9 @@ class Claim(BaseModel):
         default_factory=lambda: str(uuid.uuid4()),
         description="Unique claim identifier.",
     )
-    agent_id: str = Field(
-        ..., min_length=1, description="ID of the originating agent."
-    )
-    round: int = Field(
-        ..., ge=0, description="Deliberation round this claim was made in."
-    )
-    content: str = Field(
-        ..., min_length=10, description="The claim text / agent's position."
-    )
+    agent_id: str = Field(..., min_length=1, description="ID of the originating agent.")
+    round: int = Field(..., ge=0, description="Deliberation round this claim was made in.")
+    content: str = Field(..., min_length=10, description="The claim text / agent's position.")
     dimensions: dict[str, str] = Field(
         default_factory=dict,
         description="Structured aspects: e.g. {'feasibility': 'high', 'risk': 'moderate'}.",
@@ -69,7 +67,7 @@ class Claim(BaseModel):
         description="Vector embedding of `content` for similarity computation.",
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
     )
 
 
@@ -80,21 +78,11 @@ class Challenge(BaseModel):
         default_factory=lambda: str(uuid.uuid4()),
         description="Unique challenge identifier.",
     )
-    agent_id: str = Field(
-        ..., min_length=1, description="ID of the challenging agent."
-    )
-    target_claim_id: str = Field(
-        ..., min_length=1, description="ID of the Claim being challenged."
-    )
-    round: int = Field(
-        ..., ge=0, description="Round this challenge was made in."
-    )
-    stance: Stance = Field(
-        ..., description="Whether the challenge supports, opposes, or refines."
-    )
-    content: str = Field(
-        ..., min_length=10, description="The challenge / counter-argument text."
-    )
+    agent_id: str = Field(..., min_length=1, description="ID of the challenging agent.")
+    target_claim_id: str = Field(..., min_length=1, description="ID of the Claim being challenged.")
+    round: int = Field(..., ge=0, description="Round this challenge was made in.")
+    stance: Stance = Field(..., description="Whether the challenge supports, opposes, or refines.")
+    content: str = Field(..., min_length=10, description="The challenge / counter-argument text.")
     reasoning: str = Field(
         default="",
         description="Logical reasoning or counter-evidence for this challenge.",
@@ -104,7 +92,7 @@ class Challenge(BaseModel):
         description="Whether the original claim's author accepted this challenge.",
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
     )
 
 
@@ -115,14 +103,15 @@ class LateralIdea(BaseModel):
         default_factory=lambda: str(uuid.uuid4()),
         description="Unique lateral idea identifier.",
     )
-    agent_id: str = Field(
-        ..., min_length=1, description="ID of the originating agent."
-    )
+    agent_id: str = Field(..., min_length=1, description="ID of the originating agent.")
     round: int = Field(
-        ..., ge=0, description="Round this idea was proposed in.",
+        ...,
+        ge=0,
+        description="Round this idea was proposed in.",
     )
     content: str = Field(
-        ..., min_length=10,
+        ...,
+        min_length=10,
         description="The lateral idea / expansion — unconventional yet plausible.",
     )
     related_claim_ids: list[str] = Field(
@@ -130,11 +119,12 @@ class LateralIdea(BaseModel):
         description="IDs of claims this idea expands upon or responds to.",
     )
     novelty_rationale: str = Field(
-        ..., min_length=10,
+        ...,
+        min_length=10,
         description="Why this idea is novel, non-obvious, yet actionable.",
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
     )
 
 
@@ -145,14 +135,15 @@ class SynthesisAttempt(BaseModel):
         default_factory=lambda: str(uuid.uuid4()),
         description="Unique synthesis attempt identifier.",
     )
-    agent_id: str = Field(
-        ..., min_length=1, description="ID of the synthesizing agent."
-    )
+    agent_id: str = Field(..., min_length=1, description="ID of the synthesizing agent.")
     round: int = Field(
-        ..., ge=0, description="Round this synthesis was produced in.",
+        ...,
+        ge=0,
+        description="Round this synthesis was produced in.",
     )
     content: str = Field(
-        ..., min_length=10,
+        ...,
+        min_length=10,
         description="The merged perspective resolving contradictions.",
     )
     incorporated_claim_ids: list[str] = Field(
@@ -172,7 +163,7 @@ class SynthesisAttempt(BaseModel):
         description="Confidence in the quality of this synthesis.",
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
     )
 
 
@@ -184,21 +175,26 @@ class Expansion(BaseModel):
         description="Unique expansion identifier.",
     )
     round: int = Field(
-        ..., ge=0, description="The upcoming round agents should expand into.",
+        ...,
+        ge=0,
+        description="The upcoming round agents should expand into.",
     )
     focus_dimensions: list[str] = Field(
-        ..., min_length=1,
+        ...,
+        min_length=1,
         description="Dimensions with lowest agreement that need elaboration.",
     )
     prompt: str = Field(
-        ..., min_length=10,
+        ...,
+        min_length=10,
         description="Specific instructions to agents for the next round.",
     )
     disagreement_summary: str = Field(
-        ..., description="What agents currently disagree on and why.",
+        ...,
+        description="What agents currently disagree on and why.",
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
     )
 
 
@@ -209,26 +205,28 @@ class Synthesis(BaseModel):
         default_factory=lambda: str(uuid.uuid4()),
         description="Unique synthesis identifier.",
     )
-    content: str = Field(
-        ..., min_length=10, description="Final merged position / answer."
-    )
+    content: str = Field(..., min_length=10, description="Final merged position / answer.")
     contributing_claim_ids: list[str] = Field(
         ..., description="IDs of all claims that contributed to the synthesis."
     )
     alignment_score: float = Field(
-        ..., ge=0.0, le=1.0, description="Final alignment score at convergence.",
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Final alignment score at convergence.",
     )
     rounds_taken: int = Field(
-        ..., ge=1, description="Number of deliberation rounds to reach convergence.",
+        ...,
+        ge=1,
+        description="Number of deliberation rounds to reach convergence.",
     )
     unresolved_challenges: list[str] = Field(
         default_factory=list,
         description="IDs of challenges still open at convergence time.",
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
     )
-
 
 
 # ---------------------------------------------------------------------------
@@ -237,11 +235,13 @@ class Synthesis(BaseModel):
 # hydrate the full domain models after LLM invocation.
 # ---------------------------------------------------------------------------
 
+
 class ResearcherOutput(BaseModel):
     """Structured output from the Researcher LLM call."""
 
     content: str = Field(
-        ..., min_length=10,
+        ...,
+        min_length=10,
         description="Evidence-grounded claim text.",
     )
     dimensions: dict[str, str] = Field(
@@ -252,7 +252,8 @@ class ResearcherOutput(BaseModel):
         default=Confidence.MEDIUM,
     )
     evidence_summary: str = Field(
-        ..., min_length=5,
+        ...,
+        min_length=5,
         description="Concise summary of evidence supporting this claim.",
     )
 
@@ -261,18 +262,22 @@ class SkepticOutput(BaseModel):
     """Structured output from the Skeptic LLM call."""
 
     target_claim_id: str = Field(
-        ..., min_length=1,
+        ...,
+        min_length=1,
         description="ID of the claim being challenged.",
     )
     stance: Stance = Field(
-        ..., description="Support, oppose, or refine.",
+        ...,
+        description="Support, oppose, or refine.",
     )
     content: str = Field(
-        ..., min_length=10,
+        ...,
+        min_length=10,
         description="The challenge / counter-argument text.",
     )
     reasoning: str = Field(
-        ..., min_length=10,
+        ...,
+        min_length=10,
         description="Logical reasoning or counter-evidence justifying this stance.",
     )
 
@@ -281,7 +286,8 @@ class VisionaryOutput(BaseModel):
     """Structured output from the Visionary LLM call."""
 
     content: str = Field(
-        ..., min_length=10,
+        ...,
+        min_length=10,
         description="The lateral idea - unconventional, creative, yet plausible.",
     )
     related_claim_ids: list[str] = Field(
@@ -289,7 +295,8 @@ class VisionaryOutput(BaseModel):
         description="IDs of existing claims this idea builds upon.",
     )
     novelty_rationale: str = Field(
-        ..., min_length=10,
+        ...,
+        min_length=10,
         description="Why this idea is novel yet actionable.",
     )
 
@@ -298,7 +305,8 @@ class SynthesizerOutput(BaseModel):
     """Structured output from the Synthesizer LLM call."""
 
     content: str = Field(
-        ..., min_length=10,
+        ...,
+        min_length=10,
         description="Merged perspective that integrates all agent contributions.",
     )
     incorporated_claim_ids: list[str] = Field(

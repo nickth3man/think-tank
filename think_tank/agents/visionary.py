@@ -77,10 +77,7 @@ def visionary_node(state: ThinkTankState) -> dict:
     context_parts: list[str] = [f"## Topic\n{topic}"]
 
     if current_claims:
-        claim_lines = [
-            f"- [{c.agent_id}] (ID: {c.id}) {c.content}"
-            for c in current_claims
-        ]
+        claim_lines = [f"- [{c.agent_id}] (ID: {c.id}) {c.content}" for c in current_claims]
         context_parts.append("## Current Claims\n" + "\n".join(claim_lines))
 
     if current_challenges:
@@ -111,14 +108,21 @@ def visionary_node(state: ThinkTankState) -> dict:
     human_content = "\n\n".join(context_parts)
 
     # --- 2. LLM call with structured output ---
-    model_name = config.get("visionary_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini"))
+    model_name = config.get(
+        "visionary_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini")
+    )
     llm = ChatOpenRouter(model=model_name, temperature=0.7)  # higher temp for creativity
     structured_llm = llm.with_structured_output(VisionaryOutput, method="json_schema")
 
-    output = t.cast(VisionaryOutput, structured_llm.invoke([
-        SystemMessage(content=VISIONARY_SYSTEM_PROMPT),
-        HumanMessage(content=human_content),
-    ]))
+    output = t.cast(
+        VisionaryOutput,
+        structured_llm.invoke(
+            [
+                SystemMessage(content=VISIONARY_SYSTEM_PROMPT),
+                HumanMessage(content=human_content),
+            ]
+        ),
+    )
 
     # --- 3. Hydrate full LateralIdea ---
     idea = LateralIdea(
@@ -129,4 +133,4 @@ def visionary_node(state: ThinkTankState) -> dict:
         novelty_rationale=output.novelty_rationale,
     )
 
-    return {"expansions": existing_expansions + [idea]}
+    return {"expansions": [*existing_expansions, idea]}

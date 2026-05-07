@@ -3,7 +3,7 @@
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from think_tank.agents import researcher_node, skeptic_node, visionary_node, synthesizer_node
+from think_tank.agents import researcher_node, skeptic_node, synthesizer_node, visionary_node
 from think_tank.arbiter import arbiter_node, route_after_arbiter
 from think_tank.state import ThinkTankState
 
@@ -43,7 +43,7 @@ def build_think_tank_graph() -> CompiledStateGraph:
         "arbiter",
         route_after_arbiter,
         {
-            "researcher": "researcher",   # loop back to start of agent chain
+            "researcher": "researcher",  # loop back to start of agent chain
             "__end__": END,
         },
     )
