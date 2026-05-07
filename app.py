@@ -2495,14 +2495,17 @@ def _get_vector_store():
         persist_directory=os.getenv("CHROMA_DB_PATH", "./chroma_db"),
     )
 
+
 def _seed_if_empty(vs) -> None:
     from langchain_core.documents import Document
 
     if vs.similarity_search("remote work productivity", k=1):
         return
     vs.add_documents(
-        [Document(page_content=t, metadata={"source": "seed", "index": i})
-         for i, t in enumerate(_SEED_DOCUMENTS)]
+        [
+            Document(page_content=t, metadata={"source": "seed", "index": i})
+            for i, t in enumerate(_SEED_DOCUMENTS)
+        ]
     )
 
 
@@ -2581,17 +2584,29 @@ class _StreamAdapter:
     def open_node(self, node: str) -> list[dict]:
         agent = NODE_TO_AGENT.get(node, node)
         self.node_started[agent] = time.perf_counter()
-        return [_ev("INFO", agent, "node.enter",
-                    {"node": agent, "round": self.last_round},
-                    activate=agent)]
+        return [
+            _ev(
+                "INFO",
+                agent,
+                "node.enter",
+                {"node": agent, "round": self.last_round},
+                activate=agent,
+            )
+        ]
 
     def close_node(self, node: str) -> list[dict]:
         agent = NODE_TO_AGENT.get(node, node)
         started = self.node_started.pop(agent, time.perf_counter())
         duration_ms = int((time.perf_counter() - started) * 1000)
-        return [_ev("INFO", agent, "node.exit",
-                    {"node": agent, "round": self.last_round, "duration_ms": duration_ms},
-                    deactivate=agent)]
+        return [
+            _ev(
+                "INFO",
+                agent,
+                "node.exit",
+                {"node": agent, "round": self.last_round, "duration_ms": duration_ms},
+                deactivate=agent,
+            )
+        ]
 
     def diff_state(self, node: str, state_after: dict) -> list[dict]:
         out: list[dict] = []
@@ -2612,12 +2627,20 @@ class _StreamAdapter:
                 "id": cid,
                 "round": getattr(c, "round", rnd),
                 "agent_id": getattr(c, "agent_id", agent),
-                "confidence": getattr(getattr(c, "confidence", None), "value", str(getattr(c, "confidence", ""))),
+                "confidence": getattr(
+                    getattr(c, "confidence", None), "value", str(getattr(c, "confidence", ""))
+                ),
                 "content": getattr(c, "content", ""),
                 "evidence_summary": getattr(c, "evidence_summary", "") or "",
             }
-            edge = {"from": "researcher", "to": "synthesizer", "kind": "claim",
-                    "size": _payload_size(payload), "rtt": 5, "status": "success"}
+            edge = {
+                "from": "researcher",
+                "to": "synthesizer",
+                "kind": "claim",
+                "size": _payload_size(payload),
+                "rtt": 5,
+                "status": "success",
+            }
             out.append(_ev("INFO", "researcher", "claim.emitted", payload, edge=edge))
 
         # Challenges
@@ -2637,8 +2660,14 @@ class _StreamAdapter:
                 "reasoning": getattr(ch, "reasoning", "") or "",
             }
             status = {"oppose": "error", "refine": "warn"}.get(stance.lower(), "success")
-            edge = {"from": "skeptic", "to": "synthesizer", "kind": "challenge",
-                    "size": _payload_size(payload), "rtt": 6, "status": status}
+            edge = {
+                "from": "skeptic",
+                "to": "synthesizer",
+                "kind": "challenge",
+                "size": _payload_size(payload),
+                "rtt": 6,
+                "status": status,
+            }
             out.append(_ev("INFO", "skeptic", "challenge.emitted", payload, edge=edge))
 
         # Lateral ideas
@@ -2654,8 +2683,14 @@ class _StreamAdapter:
                 "content": getattr(idea, "content", ""),
                 "novelty_rationale": getattr(idea, "novelty_rationale", "") or "",
             }
-            edge = {"from": "visionary", "to": "synthesizer", "kind": "lateral_idea",
-                    "size": _payload_size(payload), "rtt": 7, "status": "success"}
+            edge = {
+                "from": "visionary",
+                "to": "synthesizer",
+                "kind": "lateral_idea",
+                "size": _payload_size(payload),
+                "rtt": 7,
+                "status": "success",
+            }
             out.append(_ev("INFO", "visionary", "lateral_idea.emitted", payload, edge=edge))
 
         # Synthesis attempts
@@ -2667,23 +2702,40 @@ class _StreamAdapter:
             payload = {
                 "id": sid,
                 "round": getattr(s, "round", rnd),
-                "confidence": getattr(getattr(s, "confidence", None), "value", str(getattr(s, "confidence", ""))),
+                "confidence": getattr(
+                    getattr(s, "confidence", None), "value", str(getattr(s, "confidence", ""))
+                ),
                 "content": getattr(s, "content", ""),
                 "contributing_claim_ids": list(getattr(s, "contributing_claim_ids", []) or []),
             }
-            edge = {"from": "synthesizer", "to": "arbiter", "kind": "synthesis",
-                    "size": _payload_size(payload), "rtt": 6, "status": "success"}
+            edge = {
+                "from": "synthesizer",
+                "to": "arbiter",
+                "kind": "synthesis",
+                "size": _payload_size(payload),
+                "rtt": 6,
+                "status": "success",
+            }
             out.append(_ev("INFO", "synthesizer", "synthesis.attempt", payload, edge=edge))
 
         # Alignment / convergence
         align = state_after.get("alignment_score")
         if align is not None and node == "arbiter":
-            out.append(_ev("INFO", "arbiter", "alignment.scored", {
-                "round": rnd,
-                "score": float(align),
-                "threshold": (state_after.get("config") or {}).get("alignment_threshold", 0.65),
-                "decision": "CONVERGE" if state_after.get("synthesis") else "CONTINUE",
-            }))
+            out.append(
+                _ev(
+                    "INFO",
+                    "arbiter",
+                    "alignment.scored",
+                    {
+                        "round": rnd,
+                        "score": float(align),
+                        "threshold": (state_after.get("config") or {}).get(
+                            "alignment_threshold", 0.65
+                        ),
+                        "decision": "CONVERGE" if state_after.get("synthesis") else "CONTINUE",
+                    },
+                )
+            )
 
         # Final synthesis → run.complete
         final = state_after.get("synthesis")
@@ -2694,9 +2746,22 @@ class _StreamAdapter:
                 "alignment_score": getattr(final, "alignment_score", align or 0.0),
                 "status": "CONVERGED",
             }
-            out.append(_ev("INFO", "arbiter", "run.complete", payload,
-                           edge={"from": "arbiter", "to": "orchestrator", "kind": "control",
-                                 "size": _payload_size(payload), "rtt": 3, "status": "success"}))
+            out.append(
+                _ev(
+                    "INFO",
+                    "arbiter",
+                    "run.complete",
+                    payload,
+                    edge={
+                        "from": "arbiter",
+                        "to": "orchestrator",
+                        "kind": "control",
+                        "size": _payload_size(payload),
+                        "rtt": 3,
+                        "status": "success",
+                    },
+                )
+            )
         return out
 
 
@@ -2728,18 +2793,31 @@ async def observe(ws: WebSocket) -> None:
     except WebSocketDisconnect:
         return
     if msg.get("action") != "start":
-        await ws.send_json({"sev": "ERROR", "agent": "system", "type": "protocol.error",
-                            "payload": {"reason": "expected {action:'start', topic}"}})
+        await ws.send_json(
+            {
+                "sev": "ERROR",
+                "agent": "system",
+                "type": "protocol.error",
+                "payload": {"reason": "expected {action:'start', topic}"},
+            }
+        )
         await ws.close()
         return
 
     topic = (msg.get("topic") or "").strip() or "Untitled deliberation"
 
     if not os.getenv("OPENROUTER_API_KEY"):
-        await ws.send_json(_ev("ERROR", "system", "config.missing", {
-            "reason": "OPENROUTER_API_KEY not set",
-            "hint": "Add it to .env and restart, or open /?demo=1 for a built-in trace.",
-        }))
+        await ws.send_json(
+            _ev(
+                "ERROR",
+                "system",
+                "config.missing",
+                {
+                    "reason": "OPENROUTER_API_KEY not set",
+                    "hint": "Add it to .env and restart, or open /?demo=1 for a built-in trace.",
+                },
+            )
+        )
         await ws.close()
         return
 
@@ -2747,8 +2825,7 @@ async def observe(ws: WebSocket) -> None:
     try:
         from think_tank.graph import build_think_tank_graph
     except Exception as e:
-        await ws.send_json(_ev("ERROR", "system", "import.error",
-                               {"reason": str(e)}))
+        await ws.send_json(_ev("ERROR", "system", "import.error", {"reason": str(e)}))
         await ws.close()
         return
 
@@ -2756,25 +2833,47 @@ async def observe(ws: WebSocket) -> None:
     try:
         _seed_if_empty(_get_vector_store())
     except Exception as e:
-        await ws.send_json(_ev("WARN", "system", "vector_store.seed_failed",
-                               {"reason": str(e)}))
+        await ws.send_json(_ev("WARN", "system", "vector_store.seed_failed", {"reason": str(e)}))
 
     graph = build_think_tank_graph()
     initial_state: dict = {
         "topic": topic,
         "config": {"alignment_threshold": 0.65, "min_rounds": 2, "max_rounds": 6},
-        "claims": [], "challenges": [], "expansions": [], "syntheses": [],
-        "current_round": 0, "alignment_score": 0.0,
-        "expansion": None, "synthesis": None,
+        "claims": [],
+        "challenges": [],
+        "expansions": [],
+        "syntheses": [],
+        "current_round": 0,
+        "alignment_score": 0.0,
+        "expansion": None,
+        "synthesis": None,
     }
 
     # Boot events
-    await ws.send_json(_ev("INFO", "system", "graph.compile",
-                           {"nodes": list(NODE_TO_AGENT.keys()), "checkpoint": "in_memory"}))
-    await ws.send_json(_ev("INFO", "orchestrator", "run.start",
-                           {"run_id": run_id, "topic": topic, "config": initial_state["config"]},
-                           edge={"from": "orchestrator", "to": "researcher", "kind": "dispatch",
-                                 "size": _payload_size(initial_state), "rtt": 4, "status": "success"}))
+    await ws.send_json(
+        _ev(
+            "INFO",
+            "system",
+            "graph.compile",
+            {"nodes": list(NODE_TO_AGENT.keys()), "checkpoint": "in_memory"},
+        )
+    )
+    await ws.send_json(
+        _ev(
+            "INFO",
+            "orchestrator",
+            "run.start",
+            {"run_id": run_id, "topic": topic, "config": initial_state["config"]},
+            edge={
+                "from": "orchestrator",
+                "to": "researcher",
+                "kind": "dispatch",
+                "size": _payload_size(initial_state),
+                "rtt": 4,
+                "status": "success",
+            },
+        )
+    )
 
     adapter = _StreamAdapter(run_id)
     last_state = initial_state
@@ -2800,13 +2899,23 @@ async def observe(ws: WebSocket) -> None:
     except WebSocketDisconnect:
         return
     except Exception as e:
-        await ws.send_json(_ev("ERROR", "system", "graph.exception",
-                               {"reason": str(e), "type": type(e).__name__}))
+        await ws.send_json(
+            _ev("ERROR", "system", "graph.exception", {"reason": str(e), "type": type(e).__name__})
+        )
         stream_error = str(e)
 
-    await ws.send_json(_ev("INFO", "system", "stream.end",
-                           {"run_id": run_id, "status": "ok" if stream_error is None else "error",
-                           **({"reason": stream_error} if stream_error is not None else {})}))
+    await ws.send_json(
+        _ev(
+            "INFO",
+            "system",
+            "stream.end",
+            {
+                "run_id": run_id,
+                "status": "ok" if stream_error is None else "error",
+                **({"reason": stream_error} if stream_error is not None else {}),
+            },
+        )
+    )
     try:
         await ws.close()
     except Exception:  # nosec B110  # already disconnected, swallow close errors
@@ -2815,4 +2924,5 @@ async def observe(ws: WebSocket) -> None:
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "7860")))  # nosec B104

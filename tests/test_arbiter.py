@@ -243,11 +243,9 @@ class TestArbiterNode:
         result = arbiter_node(state)
         assert result["current_round"] == 3
 
-
-# ---------------------------------------------------------------------------
-# route_after_arbiter
-# ---------------------------------------------------------------------------
-
+    # ---------------------------------------------------------------------------
+    # route_after_arbiter
+    # ---------------------------------------------------------------------------
 
     def test_routes_to_end_when_synthesis_present(self) -> None:
         synthesis = Synthesis(
