@@ -28,6 +28,7 @@ from typing import Any
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
+
 load_dotenv()
 
 # ─────────────────────────────────────────────────────────────────────────────
