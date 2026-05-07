@@ -111,7 +111,7 @@ def skeptic_node(state: ThinkTankState) -> dict:
     human_content = "\n\n".join(context_parts)
 
     # --- 3. LLM call with structured output ---
-    model_name = config.get("skeptic_model", os.getenv("DEFAULT_CHAT_MODEL", "google/gemini-3.1-flash-lite"))
+    model_name = config.get("skeptic_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini"))
     llm = ChatOpenRouter(model=model_name, temperature=0.3)
     structured_llm = llm.with_structured_output(SkepticOutput, method="json_schema")
     output = t.cast(SkepticOutput, structured_llm.invoke([
