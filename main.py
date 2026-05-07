@@ -13,14 +13,11 @@ import textwrap
 import typing as t
 
 from dotenv import load_dotenv
-
-
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
 
 from think_tank.graph import build_think_tank_graph
 from think_tank.state import ThinkTankState
-
 
 # ---------------------------------------------------------------------------
 # Dummy documents used to seed an empty Chroma collection
@@ -31,34 +28,27 @@ _SEED_DOCUMENTS = [
     "by 13% according to a Stanford study conducted over 9 months with 16,000 "
     "employees. The increase was attributed to quieter work environments and "
     "fewer sick days.",
-
     "A 2023 McKinsey report found that 87% of workers offered flexible work "
     "arrangements choose to work remotely at least part of the time. Employee "
     "satisfaction scores rose by 20% when remote options were available.",
-
     "Communication overhead increases by approximately 30% in fully remote "
     "teams due to reliance on asynchronous channels, according to a Microsoft "
     "study of 60,000 employees. This can lead to slower decision-making in "
     "time-sensitive situations.",
-
     "Hybrid work models (2-3 days in-office) appear to balance productivity "
     "gains with team cohesion. A Harvard Business Review meta-analysis of 45 "
     "studies found hybrid arrangements produced optimal outcomes for both "
     "employee well-being and business metrics.",
-
     "Remote work exacerbates the 'always-on' culture: 62% of remote workers "
     "report difficulty disconnecting after work hours (Buffer State of Remote "
     "Work 2023). This can lead to burnout despite apparent schedule flexibility.",
-
     "Innovation metrics decline in fully remote settings according to a Nature "
     "Human Behaviour study analysing 20 million research papers. Face-to-face "
     "interactions were found to be significantly more likely to produce "
     "novel, breakthrough ideas compared to virtual collaboration.",
-
     "Cost savings from remote work are substantial: companies save an average "
     "of $11,000 per remote employee per year on real estate, utilities, and "
     "office supplies (Global Workplace Analytics 2023 estimate).",
-
     "Onboarding new employees remotely takes 32% longer on average compared "
     "to in-person onboarding, according to a 2022 Gartner survey of 500 HR "
     "leaders. Knowledge transfer and culture assimilation were cited as the "
@@ -70,6 +60,7 @@ _SEED_DOCUMENTS = [
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_vector_store() -> Chroma:
     """Return a Chroma vector store using the configured DB path."""
     db_path = os.getenv("CHROMA_DB_PATH", "./chroma_db")
@@ -79,7 +70,7 @@ def _get_vector_store() -> Chroma:
             base_url="https://openrouter.ai/api/v1",
             api_key=os.getenv("OPENROUTER_API_KEY"),
             model=os.getenv("OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small"),
-            check_embedding_ctx_length=False
+            check_embedding_ctx_length=False,
         ),
         persist_directory=db_path,
     )
@@ -172,11 +163,11 @@ def _print_state(state: ThinkTankState) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     """Run the Think Tank multi-agent deliberation system."""
     # 1. Load .env (OPENAI_API_KEY, OPENROUTER_API_KEY, CHROMA_DB_PATH, etc.)
     load_dotenv()
-
 
     if not os.getenv("OPENROUTER_API_KEY"):
         raise SystemExit(

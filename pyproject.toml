@@ -15,3 +15,123 @@ dependencies = [
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
 ]
+
+[dependency-groups]
+dev = [
+    # Testing
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "hypothesis>=6.115",
+    "syrupy>=4.7",
+    "polyfactory>=2.18",
+    "faker>=33.0",
+    "freezegun>=1.5",
+    "dirty-equals>=0.8",
+    "responses>=0.25",
+    "mutmut>=3.0",
+    # Linting / formatting
+    "ruff>=0.9",
+    # Type checking
+    "pyright>=1.1",
+    "ty>=0.0",
+    # Security & dead-code
+    "bandit[toml]>=1.8",
+    "vulture>=2.14",
+    # Task automation
+    "nox>=2024.4",
+    "pre-commit>=4.0",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff — linter + formatter
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "N",        # pep8-naming
+    "UP",       # pyupgrade
+    "B",        # flake8-bugbear
+    "S",        # flake8-bandit (security)
+    "C90",      # mccabe complexity
+    "PT",       # flake8-pytest-style
+    "RUF",      # ruff-specific
+    "PERF",     # performance anti-patterns
+]
+ignore = [
+    "S101",   # assert statements (fine in tests)
+    "S105",   # hardcoded passwords (false positives in config)
+    "RUF003", # EN DASH in comments — cosmetic
+    "E501",   # line too long — handled by formatter for code; HTML strings exempt
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S106", "PT011"]
+"main.py" = ["S104"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = [
+    "--cov=think_tank",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=40",
+    "-v",
+]
+
+# ---------------------------------------------------------------------------
+# Coverage
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["think_tank"]
+omit = ["tests/*", "**/__init__.py"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
+]
+
+# ---------------------------------------------------------------------------
+# Bandit — security linter
+# ---------------------------------------------------------------------------
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "htmlcov"]
+skips = ["B101", "B601"]
+
+# ---------------------------------------------------------------------------
+# Vulture — dead code finder
+# ---------------------------------------------------------------------------
+[tool.vulture]
+min_confidence = 80
+paths = ["think_tank", "main.py", "app.py"]
+ignore_names = ["_*"]
+
+# ---------------------------------------------------------------------------
+# Mutmut — mutation testing
+# ---------------------------------------------------------------------------
+[tool.mutmut]
+paths_to_mutate = "think_tank/"
+tests_dir = "tests/"

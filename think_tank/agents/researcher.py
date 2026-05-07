@@ -5,10 +5,10 @@ from __future__ import annotations
 import os
 import typing as t
 
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openrouter import ChatOpenRouter
-from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai import OpenAIEmbeddings
+from langchain_openrouter import ChatOpenRouter
 
 from think_tank.schemas import Claim, ResearcherOutput
 from think_tank.state import ThinkTankState
@@ -17,6 +17,7 @@ _embedder = None
 _vector_store = None
 _llm = None
 
+
 def _get_embedder() -> OpenAIEmbeddings:
     global _embedder
     if _embedder is None:
@@ -24,9 +25,10 @@ def _get_embedder() -> OpenAIEmbeddings:
             base_url="https://openrouter.ai/api/v1",
             api_key=os.getenv("OPENROUTER_API_KEY"),
             model=os.getenv("OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small"),
-            check_embedding_ctx_length=False
+            check_embedding_ctx_length=False,
         )
     return _embedder
+
 
 def _get_vector_store() -> Chroma:
     global _vector_store
@@ -39,11 +41,14 @@ def _get_vector_store() -> Chroma:
         )
     return _vector_store
 
+
 def _get_llm(model_name: str) -> ChatOpenRouter:
     global _llm
     if _llm is None or _llm.model_name != model_name:
         _llm = ChatOpenRouter(model=model_name, temperature=0.2)
     return _llm
+
+
 # ---------------------------------------------------------------------------
 # System Prompt
 # ---------------------------------------------------------------------------
@@ -108,14 +113,10 @@ def researcher_node(state: ThinkTankState) -> dict:
         my_claims = [c for c in existing_claims if c.agent_id == _agent_id]
         my_ids = {c.id for c in my_claims}
         active_challenges = [
-            ch for ch in existing_challenges
-            if ch.target_claim_id in my_ids and not ch.resolved
+            ch for ch in existing_challenges if ch.target_claim_id in my_ids and not ch.resolved
         ]
         if active_challenges:
-            lines = [
-                f"- [{ch.stance.value}] {ch.content}"
-                for ch in active_challenges[-4:]
-            ]
+            lines = [f"- [{ch.stance.value}] {ch.content}" for ch in active_challenges[-4:]]
             context_parts.append("## Challenges to Your Prior Claims\n" + "\n".join(lines))
 
     if arbiter_directive is not None:
@@ -131,14 +132,21 @@ def researcher_node(state: ThinkTankState) -> dict:
     human_content = "\n\n".join(context_parts)
 
     # --- 3. LLM call with structured output ---
-    model_name = config.get("researcher_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini"))
+    model_name = config.get(
+        "researcher_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini")
+    )
     llm = _get_llm(model_name)
     structured_llm = llm.with_structured_output(ResearcherOutput, method="json_schema")
 
-    output = t.cast(ResearcherOutput, structured_llm.invoke([
-        SystemMessage(content=RESEARCHER_SYSTEM_PROMPT),
-        HumanMessage(content=human_content),
-    ]))
+    output = t.cast(
+        ResearcherOutput,
+        structured_llm.invoke(
+            [
+                SystemMessage(content=RESEARCHER_SYSTEM_PROMPT),
+                HumanMessage(content=human_content),
+            ]
+        ),
+    )
 
     # Compute embedding for the claim
     claim_embedding = _get_embedder().embed_query(output.content)
@@ -153,14 +161,15 @@ def researcher_node(state: ThinkTankState) -> dict:
         embedding=claim_embedding,
     )
 
-    return {"claims": existing_claims + [claim]}
+    return {"claims": [*existing_claims, claim]}
 
 
 # ---------------------------------------------------------------------------
 # Knowledge-base retrieval (Chroma + OpenAIEmbeddings)
 # ---------------------------------------------------------------------------
 
-def _query_knowledge_base(topic: str, state: ThinkTankState) -> str:  # noqa: ARG001
+
+def _query_knowledge_base(topic: str, state: ThinkTankState) -> str:
     """
     Retrieve relevant documents from the Chroma vector store.
     """
