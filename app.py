@@ -18,17 +18,18 @@ Constraints honoured:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import time
 import uuid
-from datetime import datetime, timezone
-from typing import Any, AsyncIterator
+from datetime import UTC, datetime
+from typing import Any
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse
+
+load_dotenv()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2540,7 +2541,7 @@ DOWNSTREAM_EDGE = {
 
 
 def _utc_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    return datetime.now(UTC).isoformat(timespec="milliseconds")
 
 
 def _ev(sev: str, agent: str, type_: str, payload: dict[str, Any], **extra) -> dict:
@@ -2719,7 +2720,6 @@ async def observe(ws: WebSocket) -> None:
     """One websocket per client. Client sends {action:'start', topic}; server
     streams events as the LangGraph deliberation progresses."""
     await ws.accept()
-    load_dotenv()
     run_id = f"run_{uuid.uuid4().hex[:10]}"
 
     try:
@@ -2805,7 +2805,7 @@ async def observe(ws: WebSocket) -> None:
                            {"run_id": run_id, "status": "ok"}))
     try:
         await ws.close()
-    except Exception:
+    except Exception:  # noqa: S110 – already disconnected, swallow close errors
         pass
 
 
