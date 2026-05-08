@@ -23,7 +23,7 @@ def _get_embedder() -> OpenAIEmbeddings:
     if _embedder is None:
         _embedder = OpenAIEmbeddings(
             base_url="https://openrouter.ai/api/v1",
-            api_key=os.getenv("OPENROUTER_API_KEY"),
+            api_key=(lambda: os.getenv("OPENROUTER_API_KEY") or ""),
             model=os.getenv("OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small"),
             check_embedding_ctx_length=False,
         )

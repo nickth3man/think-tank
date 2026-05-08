@@ -68,7 +68,7 @@ def _get_vector_store() -> Chroma:
         collection_name="think_tank_kb",
         embedding_function=OpenAIEmbeddings(
             base_url="https://openrouter.ai/api/v1",
-            api_key=os.getenv("OPENROUTER_API_KEY"),
+            api_key=(lambda: os.getenv("OPENROUTER_API_KEY") or ""),
             model=os.getenv("OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small"),
             check_embedding_ctx_length=False,
         ),

@@ -21,7 +21,7 @@ def build_think_tank_graph() -> CompiledStateGraph:
     Each agent node receives the full ThinkTankState and returns a partial
     update dict that appends its artefact to the appropriate list.
     """
-    graph = StateGraph(ThinkTankState)
+    graph = StateGraph(ThinkTankState)  # ty:ignore[invalid-argument-type]
 
     # --- Agent nodes (sequential within a round) ---
     graph.add_node("researcher", researcher_node)
@@ -48,4 +48,4 @@ def build_think_tank_graph() -> CompiledStateGraph:
         },
     )
 
-    return graph.compile()
+    return graph.compile()  # ty:ignore[invalid-return-type]
