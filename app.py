@@ -2496,18 +2496,17 @@ def _get_vector_store():
     )
 
 
-def _seed_if_empty(vs) -> None:
+async def _seed_if_empty(vs) -> None:
     from langchain_core.documents import Document
 
-    if vs.similarity_search("remote work productivity", k=1):
+    if await vs.asimilarity_search("remote work productivity", k=1):
         return
-    vs.add_documents(
+    await vs.aadd_documents(
         [
             Document(page_content=t, metadata={"source": "seed", "index": i})
             for i, t in enumerate(_SEED_DOCUMENTS)
         ]
     )
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Event mapping: LangGraph stream → flat dashboard event schema.
@@ -2831,7 +2830,7 @@ async def observe(ws: WebSocket) -> None:
 
     # Seed vector store
     try:
-        _seed_if_empty(_get_vector_store())
+        await _seed_if_empty(_get_vector_store())
     except Exception as e:
         await ws.send_json(_ev("WARN", "system", "vector_store.seed_failed", {"reason": str(e)}))
 
