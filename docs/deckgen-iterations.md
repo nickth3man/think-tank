@@ -263,3 +263,15 @@ control axis >= 0.85; the images axis applies (control carries `IMG:`).
   /tmp/tt-transcript-g17.txt, g18 (g18 = g17 + the body-enforcement sentence).
   Mechanical authority at HEAD: 17 tests, `check_deck.py` PASS (7 pages, 159 rects),
   byte-identical renders, `make check` exit 0.
+- **Attribution control (post-pass)** — the gens 16/17 sequence confounded render and
+  instrument, so one control grade separates them: the CURRENT render graded under the
+  qualitative transcript style scores [0.88-0.89, 0.82-0.85, 0.82-0.83, 0.87-0.88, 0.87]
+  over two runs — statistically the gen-15 grade of the older render. Corrected
+  attribution: the hero change is grade-NEUTRAL (kept on content merits: it removes a
+  duplicated stat and makes the hero its own family); the strict-bar pass was delivered by
+  the measured grade context, worth +0.05 (space) to +0.10 (variety) per axis. The pass is
+  therefore a property of render+context together, and is reproducible only with the
+  versioned context (`ui/deckgen/think-tank.grade-context.md`): 3 of 7 grade events pass
+  all five axes with it; 0 of 2 without it. The gens 11-15 plateau numbers were measured
+  under the qualitative style and stand within that instrument; cross-style comparisons
+  are not valid.
