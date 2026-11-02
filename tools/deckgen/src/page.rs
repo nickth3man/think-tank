@@ -443,6 +443,36 @@ fn paint_slide(
         "footer",
         "counter",
     );
+    paint_progress(&p, page, total, fy);
+}
+
+/// ArtCraft `waveform.rs` bar strip: bars 2.0 wide on a 3.5 pitch, the played
+/// portion in the accent ink and the remainder in dim grey (`WAVE_INK`,
+/// `PROGRESS_INK`). Deck adaptation: one bar per page, centred in the footer,
+/// filled up to the current page — a progress cue that also breaks the
+/// text-only footer line.
+fn paint_progress(p: &egui::Painter, page: usize, total: usize, fy: f32) {
+    const BAR_W: f32 = 4.0;
+    const BAR_STEP: f32 = 7.0;
+    const BAR_H: f32 = 14.0;
+    if total < 2 {
+        return;
+    }
+    let strip_w = (total as f32 - 1.0) * BAR_STEP + BAR_W;
+    let x0 = (PAGE.x - strip_w) / 2.0;
+    for i in 0..total {
+        let rect = Rect::from_min_size(
+            Pos2::new(x0 + i as f32 * BAR_STEP, fy + 8.0),
+            vec2(BAR_W, BAR_H),
+        );
+        let filled = i < page;
+        record(
+            if filled { "progress-filled" } else { "progress-rest" },
+            format!("bar {}", i + 1),
+            rect,
+        );
+        p.rect_filled(rect, 1.0, if filled { ACCENT_400 } else { FAINT });
+    }
 }
 
 fn paint_title(p: &egui::Painter, ctx: &Context, s: &Slide) {
@@ -610,6 +640,7 @@ fn paint_content(
             avail_with_cards.max(band_full),
             forced,
         );
+        if std::env::var("DECKGEN_VERBOSE").is_ok() { eprintln!("deckgen: callout-band fit {body_sz}"); }
         fit.set(fit.get().min(body_sz));
         let need_sized = {
             let inner_w = CONTENT_W - 80.0;
@@ -657,6 +688,7 @@ fn paint_content(
         let gap = 28.0;
         let col_w = CONTENT_W - cards_w - gap;
         let (ch_sz, cb_sz) = callout_sizes(ctx, col_w, &c.value, &c.label, band, forced);
+        if std::env::var("DECKGEN_VERBOSE").is_ok() { eprintln!("deckgen: callout-col fit {cb_sz}"); }
         fit.set(fit.get().min(cb_sz));
         let h = callout_height(ctx, col_w, &c.value, &c.label).min(band);
         let h = {
@@ -888,8 +920,10 @@ fn paint_content(
                 None => cols.push((None, b.to_string())),
             }
         }
-        fit.set(fit.get().min(21.0f32.min(floor - y)));
-        let sz = forced.unwrap_or(21.0).min(21.0);
+        let claim_sz = claim_size(floor - y);
+        if std::env::var("DECKGEN_VERBOSE").is_ok() { eprintln!("deckgen: claims fit {claim_sz}"); }
+        fit.set(fit.get().min(claim_sz));
+        let sz = forced.unwrap_or(claim_sz).min(claim_sz);
         let mut y0 = y;
         // `chunks`, not `chunks_exact`: an odd final claim must render as its own
         // full-width row rather than vanish (`chunks_exact` would drop it).
@@ -1004,6 +1038,7 @@ fn paint_content(
             y + h <= floor
         })
         .unwrap_or(15.0);
+    if std::env::var("DECKGEN_VERBOSE").is_ok() { eprintln!("deckgen: list fit {fitted}"); }
     fit.set(fit.get().min(fitted.min(30.0)));
     let size = forced.unwrap_or(fit.get().min(30.0));
     let mut copy_bottom = y;
@@ -1545,5 +1580,86 @@ mod tests {
             cards[1].y.to_bits(),
             "cards must share a top edge"
         );
+    }
+}
+
+#[cfg(test)]
+mod progress_tests {
+    use super::*;
+
+    #[test]
+    fn footer_progress_strip_matches_page_position() {
+        let deck = crate::spec::parse(
+            "# Deck\nKICKER: K\n---\n# One\nKICKER: S\n- alpha item one\n---\n# Two\nKICKER: T\n- beta item two\n---\n# Three\nKICKER: U\n- gamma item three\n",
+            std::path::Path::new("."),
+        );
+        render_deck(&deck);
+        let layout = layout();
+        assert_eq!(layout.len(), 4, "one rect list per page");
+        for (i, page) in layout.iter().enumerate() {
+            let page_no = i + 1;
+            let filled: Vec<&LayoutItem> =
+                page.iter().filter(|r| r.kind == "progress-filled").collect();
+            let rest: Vec<&LayoutItem> =
+                page.iter().filter(|r| r.kind == "progress-rest").collect();
+            assert_eq!(
+                filled.len(),
+                page_no,
+                "page {page_no}: filled bars must equal the page position"
+            );
+            assert_eq!(
+                rest.len(),
+                layout.len() - page_no,
+                "page {page_no}: rest bars must fill out the total"
+            );
+            // The strip is centred: first bar and last bar mirror around page centre.
+            let all: Vec<&LayoutItem> = filled.iter().chain(rest.iter()).map(|r| *r).collect();
+            let strip_left = all.iter().map(|r| r.x).fold(f32::MAX, f32::min);
+            let strip_right = all.iter().map(|r| r.x + r.w).fold(f32::MIN, f32::max);
+            let centre = (strip_left + strip_right) / 2.0;
+            assert!(
+                (centre - PAGE.x / 2.0).abs() < 1.0,
+                "strip centred: centre {centre} vs page centre {}",
+                PAGE.x / 2.0
+            );
+            // Bars sit below the footer rule, never past it.
+            for bar in &all {
+                assert!(bar.y > PAGE.y - 40.0, "bar breaches footer rule: y={} kind={}", bar.y, bar.kind);
+            }
+        }
+    }
+}
+
+/// Claims share the body-size ladder and skip its gaps: 21 is not a ladder
+/// step, so a 21 pt claim beside 20 pt bullets would read as a second body
+/// size. Claims take the largest step at or below their available height.
+fn claim_size(floor_gap: f32) -> f32 {
+    [20.0f32, 18.0, 16.0, 15.0]
+        .into_iter()
+        .find(|&sz| sz <= floor_gap)
+        .unwrap_or(15.0)
+}
+
+#[cfg(test)]
+mod claim_ladder_tests {
+    use super::*;
+
+    #[test]
+    fn claims_never_paint_at_a_ladder_gap_size() {
+        // Any generous floor must yield a shared step, never the 21 pt gap
+        // that would sit between the ladder's 22 and 20 steps.
+        for gap in [20.0, 21.0, 21.9, 22.0, 100.0, 500.0] {
+            let sz = claim_size(gap);
+            assert!(
+                [20.0f32, 18.0, 16.0, 15.0].contains(&sz),
+                "claim_size({gap}) = {sz}, which is not a shared ladder step"
+            );
+            assert!(
+                sz <= gap,
+                "claim_size({gap}) = {sz} exceeds the available height"
+            );
+        }
+        assert_eq!(claim_size(20.0), 20.0, "exactly 20 must take the 20 step");
+        assert_eq!(claim_size(19.9), 18.0, "below 20 must drop a full step");
     }
 }
