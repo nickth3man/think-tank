@@ -23,14 +23,23 @@ None during a run. Commits at every generation are the audit trail; the Jev comp
 gate (`jev_gate`) is the only completion authority. The run ends with one **brief**:
 score table with deltas vs run start, list of commits, what changed and why, PDF paths.
 
-## Exit bar
+## Exit bar and generation budget
 
 Every applicable control axis ≥ 0.85 (five frozen axes; the images axis applies only when
 the deck carries `IMG:`). No accepted generation may regress an axis more than 0.05 vs the
-previous accepted one. Hard cap: 6 generations per run — the cap ends the run, the brief
-reports where the bar was missed. **Saturation stop**: if two consecutive generations
-aimed at the same weakest axis move it by less than the ±0.02 noise floor cumulatively,
-the axis is at the design's ceiling — stop, record the evidence in
+previous accepted one.
+
+The **budget** (generations per run) is decided per invocation and recorded in the brief:
+
+- The user supplies it — `/deckgen-loop N` sets the budget to N generations.
+- The user supplies none — the agent sets it from the evidence: axes below the bar, their
+  distance from it, and whether an aimed fix exists for the weakest. No axis below the bar
+  → budget 0 (grade only). The brief always names the budget and how it was chosen.
+
+The budget is a ceiling, not a quota: the run ends earlier on the exit bar, on the
+saturation stop, or when no aimed fix remains. **Saturation stop**: if two consecutive
+generations aimed at the same weakest axis move it by less than the ±0.02 noise floor
+cumulatively, the axis is at the design's ceiling — stop, record the evidence in
 `docs/deckgen-iterations.md`, and report the gap rather than churn.
 
 ## Instruments

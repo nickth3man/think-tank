@@ -44,6 +44,9 @@
 - **Grader**: frozen five-axis `jev_noul` + measured type inventory (noise floor ±0.02).
 - **Checkpoint**: none. A conventional commit per generation; `README.md` updated in the
   same commit when a directive, family, dependency, or tool is added. Jev gates completion.
-- **Exit bar**: every applicable axis ≥ 0.85; regression guard 0.05; cap 6 generations;
-  saturation stop when two generations move the targeted axis under the noise floor.
+- **Exit bar**: every applicable axis ≥ 0.85; regression guard 0.05; saturation stop when
+  two generations move the targeted axis under the noise floor.
+- **Generation budget**: set per invocation — `/deckgen-loop N` runs N generations; with no
+  number the agent chooses it from the evidence and names it in the brief. A ceiling, not a
+  quota.
 - **Skill**: `~/.omp/agent/skills/deckgen-loop/SKILL.md` (user-invoked, no description cost).
