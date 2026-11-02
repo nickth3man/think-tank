@@ -11,6 +11,7 @@ KICKER: HOW IT WORKS
 - Researcher claims, Skeptic challenges, Visionary lateral-ideas, Synthesizer merges — then the Arbiter scores the round.
 - The Arbiter weighs semantic stabilisation at 0.80 and the opposition ratio at 0.20.
 - Rounds repeat until the alignment score clears the target, or the round budget runs out.
+- Unconverged rounds carry the arbiter's expansion directive into the next round's agents.
 STAT: 4 | AGENTS PER ROUND
 STAT: 0.80 | SEMANTIC WEIGHT
 STAT: 6 | ROUND CEILING

@@ -550,6 +550,34 @@ fn paint_title(p: &egui::Painter, ctx: &Context, s: &Slide) {
         let g = hud_galley(ctx, m, ACCENT_400, 0.15);
         paint_text(p, Pos2::new(MARGIN, PAGE.y - 40.0 - 40.0), g, "meta", m);
     }
+    paint_waveform_signature(p, s);
+}
+
+/// ArtCraft `waveform.rs` at display scale: a bar strip on a fixed pitch whose
+/// envelope reads as an audio placeholder (`PLACEHOLDER_BARS`). On the title
+/// slide it sits on the meta baseline, right-aligned opposite the meta text —
+/// the deck's visual signature, all bars in the accent ink (the deck's own
+/// story: converged). Heights follow a fixed deterministic envelope.
+fn paint_waveform_signature(p: &egui::Painter, s: &Slide) {
+    if s.meta.is_none() {
+        return;
+    }
+    const BAR_W: f32 = 4.0;
+    const BAR_STEP: f32 = 10.0;
+    const N: usize = 30;
+    let envelope = |i: usize| 10.0 + 34.0 * ((i as f32 * 0.55).sin().abs());
+    let strip_w = (N as f32 - 1.0) * BAR_STEP + BAR_W;
+    let bottom = PAGE.y - 69.0; // meta text top: bars rise from that baseline
+    let x0 = PAGE.x - MARGIN - strip_w;
+    for i in 0..N {
+        let h = envelope(i);
+        let rect = Rect::from_min_size(
+            Pos2::new(x0 + i as f32 * BAR_STEP, bottom - h),
+            vec2(BAR_W, h),
+        );
+        record("waveform", format!("wave {i}"), rect);
+        p.rect_filled(rect, 2.0, ACCENT_400);
+    }
 }
 
 fn paint_section(p: &egui::Painter, ctx: &Context, s: &Slide) {
@@ -1661,5 +1689,38 @@ mod claim_ladder_tests {
         }
         assert_eq!(claim_size(20.0), 20.0, "exactly 20 must take the 20 step");
         assert_eq!(claim_size(19.9), 18.0, "below 20 must drop a full step");
+    }
+}
+
+#[cfg(test)]
+mod waveform_tests {
+    use super::*;
+
+    #[test]
+    fn title_waveform_signature_is_right_aligned_and_clear_of_text() {
+        let deck = crate::spec::parse(
+            "# Deck\nKICKER: K\nSUBTITLE: A two line subtitle for the deck.\nMETA: M\n---\n# One\nKICKER: S\n- alpha item one\n",
+            std::path::Path::new("."),
+        );
+        render_deck(&deck);
+        let title = &layout()[0];
+        let waves: Vec<&LayoutItem> =
+            title.iter().filter(|r| r.kind == "waveform").collect();
+        assert_eq!(waves.len(), 30, "one bar per envelope step");
+        // All bars share the meta baseline and stay right of the page centre.
+        for w in &waves {
+            assert!(
+                (w.y + w.h - (PAGE.y - 69.0)).abs() < 0.5,
+                "bar not on the meta baseline: y+{} kind={}", w.y + w.h, w.kind
+            );
+            assert!(w.x > PAGE.x / 2.0, "bar intrudes into the title column");
+            assert!(w.y > 0.0, "bar off-page");
+        }
+        // Fixed pitch: consecutive bars advance by exactly BAR_STEP.
+        let mut xs: Vec<f32> = waves.iter().map(|w| w.x).collect();
+        xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        for pair in xs.windows(2) {
+            assert!((pair[1] - pair[0] - 10.0).abs() < 0.5, "pitch broken");
+        }
     }
 }
