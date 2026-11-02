@@ -733,21 +733,23 @@ fn paint_content(
         stats_top - 28.0
     };
 
-    // Optional image column (right 42 %): the frame hugs the image's aspect so
-    // charts fill it instead of floating in a tall well.
+    // Optional image column (right 42 %): the frame fills its slot — the band between
+    // the rule and the card row, grown up to 20 % past the pure aspect fit — so a
+    // chart reads at full weight instead of floating in a taller well. The source is
+    // centre-cropped (uv) to the frame's aspect at paint time.
     let img = s.image.as_ref().map(|path| {
         let im = image::open(path).unwrap_or_else(|e| {
             eprintln!("deckgen: IMG {}: {e}", path.display());
             std::process::exit(1);
         });
-        // The frame fills its column: wider slot so the chart reads at the same weight as
-        // the copy beside it, capped by the band between the rule and the card row.
         let slot_w = CONTENT_W * 0.50 - 8.0;
-        let h = (slot_w * im.height() as f32 / im.width() as f32).min(floor - y - 26.0);
+        let band = (floor - y - 26.0).max(40.0);
+        let aspect_h = slot_w * im.height() as f32 / im.width() as f32;
+        let h = band.min(aspect_h * 1.2);
         let rect = Rect::from_min_size(
             Pos2::new(
                 MARGIN + CONTENT_W - slot_w,
-                y + (floor - y - 26.0 - h).max(0.0) / 2.0,
+                y + (band - h).max(0.0) / 2.0,
             ),
             vec2(slot_w, h),
         );
@@ -1035,12 +1037,18 @@ fn paint_content(
         let id = tex.id();
         *keep = Some(tex);
         record("image", "IMG", rect);
-        p.image(
-            id,
-            rect,
-            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-            Color32::WHITE,
-        );
+        // Cover-fit: centre-crop the source to the frame's aspect so the chart fills
+        // the frame instead of letterboxing inside it.
+        let src_a = im.width() as f32 / im.height() as f32;
+        let frame_a = rect.width() / rect.height();
+        let uv = if src_a > frame_a {
+            let f = frame_a / src_a;
+            Rect::from_min_max(Pos2::new((1.0 - f) / 2.0, 0.0), Pos2::new((1.0 + f) / 2.0, 1.0))
+        } else {
+            let f = src_a / frame_a;
+            Rect::from_min_max(Pos2::new(0.0, (1.0 - f) / 2.0), Pos2::new(1.0, (1.0 + f) / 2.0))
+        };
+        p.image(id, rect, uv, Color32::WHITE);
         p.rect_stroke(rect, RADIUS, hairline(), egui::StrokeKind::Inside);
     }
     ui.interact(
@@ -1295,6 +1303,42 @@ mod tests {
         assert!(
             (label.y + label.h / 2.0 - rule.y).abs() < 2.0,
             "label centred on the rule"
+        );
+    }
+
+    /// The image frame fills its band (up to the cover-fit cap) rather than sitting at
+    /// the pure aspect height, and its bottom still clears the card row.
+    #[test]
+    fn image_frame_fills_its_band_and_clears_the_cards() {
+        let img_path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../ui/deck/shots/chart.jpg");
+        let im = image::open(&img_path).expect("chart fixture");
+        let deck = spec::parse(
+            "# D\n---\n# Slide\nKICKER: K\n- one item here\n- two item here\nIMG: ../../ui/deck/shots/chart.jpg\nSTAT: 0 | BROWSERS\n",
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        );
+        render_deck(&deck);
+        let page = &layout()[1];
+        let img = page.iter().find(|i| i.kind == "image").expect("image recorded");
+        let card = page.iter().find(|i| i.kind == "card").expect("card recorded");
+        let aspect_h = img.w * im.height() as f32 / im.width() as f32;
+        assert!(
+            img.h > aspect_h + 1.0,
+            "frame h {:.1} should exceed the aspect fit {:.1} (cover-fit fills the band)",
+            img.h,
+            aspect_h
+        );
+        assert!(
+            img.h <= aspect_h * 1.2 + 0.5,
+            "frame h {:.1} exceeds the 20% cover cap {:.1}",
+            img.h,
+            aspect_h * 1.2
+        );
+        assert!(
+            img.y + img.h <= card.y - 20.0,
+            "image bottom {:.1} runs toward the card row at {:.1}",
+            img.y + img.h,
+            card.y
         );
     }
 

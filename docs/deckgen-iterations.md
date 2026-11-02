@@ -161,3 +161,18 @@ control axis >= 0.85; the images axis applies (control carries `IMG:`).
   axis regressed more than 0.05 (regression decks: think-tank [0.86, 0.90, 0.84,
   0.74, 0.87], lab [0.83, 0.89, 0.75, 0.33 n/a, 0.85]). Remaining sub-bar axis:
   images 0.79.
+
+- **Gen 8 (accepted)** — aimed at images 0.79, the remaining sub-bar axis. Fix:
+  `paint_content`'s image column now grows the frame to fill its whole band between
+  the rule and the card row (capped at 20% past the pure aspect fit) and paints the
+  source centre-cropped (uv) to the frame's aspect, so the chart fills its frame
+  instead of letterboxing. Measured on the control render: image frame 357x187 at
+  y171 (aspect-locked, 28pt of band unused) -> 357x200 at y165, bottom 365 = floor
+  391 minus the 26pt cap, with a ~13% horizontal centre crop; all chart labels,
+  axes and the 0.65 target line still read inside the frame. New behavioural test
+  `image_frame_fills_its_band_and_clears_the_cards`; 13 tests pass, clippy clean, all
+  three decks re-gate PASS. Grade of the gated render: [space 0.88, body 0.89,
+  variety 0.83, images 0.89, title 0.86] — aimed axis cleared the bar; variety moved
+  0.85->0.83 (-0.02, inside the noise floor, not a regression). Regression decks:
+  think-tank [0.85, 0.89, 0.85, 0.81, 0.87], lab [0.83, 0.90, 0.75, 0.30 n/a, 0.85].
+  Remaining sub-bar axis: variety 0.83 (gap 0.02, at the noise floor).

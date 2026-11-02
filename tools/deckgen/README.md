@@ -25,10 +25,14 @@ Blank blocks (e.g. a trailing `---`) are skipped. Per slide: `# Title`, `KICKER:
 `IMG: path` (relative to the spec file's directory).
 
 Layout families (chosen per slide from content):
-1. **Title** (first block): kicker, huge display title, subtitle, bottom meta anchor.
+1. **Title** (first block): kicker, huge display title, subtitle, bottom meta anchor;
+   the block is centred in the space above the meta anchor so the voids above and
+   below it are equal.
 2. **List**: bullets at a deck-wide fitted size (varies layout, not type size), stat cards.
-3. **Image split**: text column + image whose frame fills its half of the content width,
-   vertically centred in the band and capped above the card row.
+3. **Image split**: text column + image whose frame fills its half of the content
+   width and the band above the card row (grown up to 20% past the aspect fit,
+   vertically centred), with the source centre-cropped to the frame's aspect so the
+   chart fills the frame instead of letterboxing inside it.
 4. **Statement** (deliberate, loose trigger): a slide with no `IMG:` whose body text
    contains `": "` anywhere renders as two-column tracked-header claims. Each claim line
    splits at its **first** colon — text before it becomes a tracked header, after it the
