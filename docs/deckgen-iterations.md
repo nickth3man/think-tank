@@ -219,3 +219,25 @@ control axis >= 0.85; the images axis applies (control carries `IMG:`).
   14/14, `check_deck.py` PASS (6 pages, 81 rects, no overlaps, no footer breaches, cards
   aligned), 6 distinct layout families on 6 pages (title, list, image-split, statement,
   hero, callout), `make check` exit 0.
+
+- **Gens 11–15 (strict-bar campaign, auto_accept 0.90)** — four structural levers, each
+  mined and mechanically verified: (11) ArtCraft `waveform.rs` footer progress strip
+  (one bar per page, accent-filled to the current page — `paint_progress`, behavioural
+  test pins filled==page and centring); (12) claims join the shared body-size ladder
+  (`claim_size`, 21 pt is a gap step — unit test; pixel-neutral on this deck at 18 pt);
+  (13) section divider PART TWO before the closing act — 7 pages, 7 families, stat
+  truthfully bumped to 7; grade moved variety +0.06 (0.79→0.85), the largest single-axis
+  jump of the campaign; (14) P2 balanced 2+2 columns via the expansion-directive bullet
+  (tops measured aligned); (15) title waveform signature (30 bars, deterministic
+  envelope, on the meta baseline — behavioural test pins baseline/pitch/placement),
+  title 0.86→0.88. Copy-trim experiments that stepped the deck body to 20/21 pt graded
+  body 0.63–0.68 and were reverted; 18 pt remains the measured optimum.
+- **Strict-bar noise floor (identical transcript ×3)** — per-axis runs
+  [space 0.89,0.89,0.89], [body 0.88,0.85,0.86], [variety 0.85,0.84,0.86],
+  [images 0.88,0.87,0.86], [title 0.88,0.87,0.88]: sd ≤ 0.012, space pinned. Standing
+  values at HEAD `7ea3b59`: [0.89, 0.863, 0.85, 0.87, 0.876]. Body (−0.035) and variety
+  (−0.05) sit 2–4 sd below the 0.90 bar — real gaps in the judge's calibration, not
+  noise; title (−0.02) and images (−0.03) are 1–2 sd. Three consecutive generations
+  moved the composite within the floor (4.34→4.31→4.33 of 5.0): plateau. Mechanical
+  authority at HEAD: 17 tests, `check_deck.py` PASS (7 pages, 165 rects, no overlaps,
+  no footer breaches, cards aligned).
