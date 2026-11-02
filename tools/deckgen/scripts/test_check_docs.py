@@ -18,7 +18,8 @@ REPO = Path(__file__).resolve().parents[3]
 CHECK = REPO / "tools/deckgen/scripts/check_docs.py"
 # The versioned copy, not the machine-local install: a fresh clone must be able to run these.
 SKILL = REPO / "workflows/deckgen-loop/SKILL.md"
-PY = REPO / ".venv/bin/python"
+# The interpreter running this suite, so a fresh clone without .venv still works.
+PY = Path(sys.executable)
 
 
 def run(
