@@ -70,6 +70,19 @@ pub struct Recorder {
     force: Mutex<Option<bool>>,
 }
 
+/// One span as an external consumer sees it: offsets, not `Instant`s.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SpanRecord {
+    pub name: String,
+    pub kind: String,
+    pub depth: usize,
+    /// Milliseconds from the earliest recorded span's start.
+    pub offset_ms: f64,
+    pub duration_ms: f64,
+    pub attrs: Vec<(String, String)>,
+    pub error: Option<String>,
+}
+
 impl Recorder {
     pub fn enable(&self, value: bool) {
         *self.force.lock().expect("recorder lock") = Some(value);
@@ -143,6 +156,45 @@ impl Recorder {
                 .cloned()
                 .collect(),
         }
+    }
+
+    /// Spans flattened for external consumers: relative timing, no `Instant`s.
+    ///
+    /// The CLI report is for humans at a terminal; the UI needs the same data as
+    /// structured records so it can draw a timeline and list attributes.
+    pub fn span_records(&self, run_id: Option<&str>) -> Vec<SpanRecord> {
+        let spans = self.select(run_id);
+        let Some(base) = spans.iter().map(|s| s.start).min() else {
+            return Vec::new();
+        };
+        spans
+            .into_iter()
+            .map(|span| {
+                let offset_ms = span.start.duration_since(base).as_secs_f64() * 1000.0;
+                let duration_ms = span.duration() * 1000.0;
+                SpanRecord {
+                    name: span.name,
+                    kind: span.kind,
+                    depth: span.depth,
+                    offset_ms,
+                    duration_ms,
+                    attrs: span.attrs,
+                    error: span.error,
+                }
+            })
+            .collect()
+    }
+
+    /// Wall clock spanned by the selected spans, in seconds.
+    pub fn wall_clock(&self, run_id: Option<&str>) -> f64 {
+        let spans = self.select(run_id);
+        let (Some(first), Some(last)) = (
+            spans.iter().map(|s| s.start).min(),
+            spans.iter().map(|s| s.end.unwrap_or(s.start)).max(),
+        ) else {
+            return 0.0;
+        };
+        last.duration_since(first).as_secs_f64()
     }
 
     pub fn exclusive_totals(&self, run_id: Option<&str>) -> BTreeMap<String, f64> {

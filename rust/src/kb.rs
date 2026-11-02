@@ -132,6 +132,19 @@ impl VectorStore {
 
     /// Top-k similarity search by cosine similarity, highest first.
     pub fn similarity_search(&self, query: &str, k: usize) -> Result<Vec<StoredDocument>, String> {
+        Ok(self
+            .similarity_search_scored(query, k)?
+            .into_iter()
+            .map(|(_, doc)| doc)
+            .collect())
+    }
+
+    /// Same ranking as [`similarity_search`](Self::similarity_search), keeping each score.
+    pub fn similarity_search_scored(
+        &self,
+        query: &str,
+        k: usize,
+    ) -> Result<Vec<(f64, StoredDocument)>, String> {
         if self.collection.documents.is_empty() {
             return Ok(Vec::new());
         }
@@ -146,7 +159,7 @@ impl VectorStore {
         Ok(scored
             .into_iter()
             .take(k)
-            .map(|(_, doc)| doc.clone())
+            .map(|(score, doc)| (score, doc.clone()))
             .collect())
     }
 }

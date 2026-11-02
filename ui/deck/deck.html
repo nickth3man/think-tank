@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Think Tank — UI review deck</title>
+<link rel="stylesheet" href="deck.css">
+</head>
+<body>
+
+<!-- 1 ─────────────────────────────────────────────── -->
+<section class="slide cover">
+  <div>
+    <div class="kicker">Design review pack · v1</div>
+    <h1>Think Tank<br><span class="muted" style="font-size:19pt;font-weight:400">a viewer for a four-agent debate</span></h1>
+    <p class="lead" style="max-width:170mm;margin-top:6mm">
+      You have not seen this project before. Everything you need to critique the
+      interface is in this pack: what the software does, what the screen is trying
+      to achieve, the screen itself at full size, and the specific questions we
+      cannot answer ourselves.
+    </p>
+  </div>
+  <div>
+    <div class="rule"></div>
+    <div class="meta">
+      <span><b>What it is</b><br>A local desktop app that shows one AI debate</span>
+      <span><b>Who it is for</b><br>Someone who has never heard of any of these agents</span>
+      <span><b>Ask</b><br>Critique the design, not the AI</span>
+      <span><b>Time</b><br>About 25 minutes</span>
+    </div>
+    <p class="small muted" style="margin-top:6mm">
+      Screenshots are of the running application, unedited except for cropping.
+      All numbers on the slides are read from the same data the interface reads.
+      Scores and similarities are printed at two decimals, the score breakdown at four;
+      the forced run's final score is 0.1536 shown as 0.15.
+    </p>
+  </div>
+</section>
+
+<!-- 2 ─────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <h2>The product in one page</h2>
+    <div class="cols" style="margin-top:4mm">
+    <div class="col col-55">
+      <p class="lead">Four AI agents argue about a question in rounds until a scoring
+      program decides the group has settled — or gives up.</p>
+      <ol class="step" style="margin-top:5mm">
+        <li><b>Researcher</b> looks up documents and states a position.</li>
+        <li><b>Skeptic</b> attacks that position, supports it, or asks for a refinement.</li>
+        <li><b>Visionary</b> proposes an angle nobody raised.</li>
+        <li><b>Synthesizer</b> merges the round into one answer and lists what is still open.</li>
+        <li><b>Arbiter</b> — not an AI model, a plain program — scores how settled the
+            group is and decides: another round, or stop.</li>
+      </ol>
+      <p class="muted small" style="margin-top:4mm">One pass through all five is one <b>round</b>.
+      A run is one or more rounds. A run ends either because the group settled, or
+      because it hit the round limit.</p>
+    </div>
+    <div class="col col-45">
+      <div class="card blue">
+        <h3 style="color:#58a6ff">The scoring rule</h3>
+        <p class="mono" style="font-size:10pt;color:#e6edf3">score = 0.80 × alignment<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ 0.20 × (1 − opposition)</p>
+        <p class="small" style="margin-top:2mm"><b>alignment</b> — how close this round's position is to previous rounds'. High means the group stopped moving.</p>
+        <p class="small"><b>opposition</b> — the share of challenges this round that argue against.</p>
+        <p class="small muted" style="margin-bottom:0">A run stops on agreement when the score reaches the
+        target and the minimum number of rounds has run. It stops regardless when the
+        maximum is hit.</p>
+      </div>
+      <div class="card amber">
+        <h3 style="color:#d29922">Why this is hard to show</h3>
+        <p class="small" style="margin-bottom:0">The interesting content is a
+        <i>process</i>, not a result: five steps, repeated, with a score that changes
+        meaning as it goes. Most dashboards show an end state. This one has to show the
+        loop and still make the ending obvious.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 ─────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <h2>The words this screen uses</h2>
+    <p class="small muted" style="margin-bottom:3mm">Every term below appears in the interface or in this deck. The app defines each one in its Terms tab; this is the same list, so you never have to leave the page to follow a slide.</p>
+  <div class="cols">
+    <div class="col">
+      <table style="font-size:9pt">
+        <tr><th style="width:30%">Term</th><th>What it means here</th></tr>
+        <tr><td><b>Run</b></td><td>One complete debate about one question, from first round to final answer.</td></tr>
+        <tr><td><b>Round</b></td><td>One pass through all five steps. A run is one or more rounds.</td></tr>
+        <tr><td><b>Agent</b></td><td>One participant with a fixed job: Researcher, Skeptic, Visionary or Synthesizer.</td></tr>
+        <tr><td><b>Claim</b></td><td>A position stated by the Researcher, with the evidence behind it.</td></tr>
+        <tr><td><b>Challenge</b></td><td>The Skeptic's reply to one claim.</td></tr>
+        <tr><td><b>Stance</b></td><td>Which way a challenge leans: oppose, support, or refine.</td></tr>
+        <tr><td><b>Lateral idea</b></td><td>An unconventional angle from the Visionary.</td></tr>
+        <tr><td><b>Synthesis</b></td><td>The Synthesizer's merged answer for one round. The last one becomes the run's final answer.</td></tr>
+      </table>
+    </div>
+    <div class="col">
+      <table style="font-size:9pt">
+        <tr><th style="width:30%">Term</th><th>What it means here</th></tr>
+        <tr><td><b>Arbiter</b></td><td>A plain program, not an AI model. Scores the round and decides whether to continue.</td></tr>
+        <tr><td><b>Alignment</b></td><td>How similar this round's position is to earlier rounds'. High means the group stopped moving.</td></tr>
+        <tr><td><b>Opposition</b></td><td>The share of this round's challenges that argue against.</td></tr>
+        <tr><td><b>Score</b></td><td>0.80 × alignment + 0.20 × (1 − opposition). Ranges 0 to 1.</td></tr>
+        <tr><td><b>Converged</b></td><td>The score reached the target and the minimum rounds ran, so the debate stopped on agreement.</td></tr>
+        <tr><td><b>Forced stop</b></td><td>The round limit was hit before agreement. The agents did not settle.</td></tr>
+        <tr><td><b>Embedding</b></td><td>The meaning of a piece of text as a list of numbers. Similar meaning, similar numbers.</td></tr>
+        <tr><td><b>Cosine similarity</b></td><td>How close two embeddings are: 1 = same meaning, 0 = unrelated, negative = opposite.</td></tr>
+        <tr><td><b>Span</b></td><td>One timed step of the run, used for the timing graph.</td></tr>
+        <tr><td><b>Replay</b></td><td>Recorded AI answers played through the real agent code. See slide 13.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 4 ─────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <h2>What the interface is trying to achieve</h2>
+    <p class="lead" style="max-width:190mm">Three objectives, in priority order. They conflict — the
+  critique we want is where we got the balance wrong.</p>
+
+  <div class="cols" style="margin-top:5mm">
+    <div class="col card blue">
+      <h3 style="color:#58a6ff">1 · Understandable with no background</h3>
+      <p class="small">A complete beginner should be able to say, without help: what this
+      screen is, what each region is for, why the debate continued or stopped, and what
+      the final answer was.</p>
+      <p class="small muted" style="margin-bottom:0">Every domain term is either expanded
+      in place or listed in a glossary inside the app.</p>
+    </div>
+    <div class="col card blue">
+      <h3 style="color:#58a6ff">2 · Show everything, without a mode switch</h3>
+      <p class="small">All 58 fields of the underlying run state are either rendered or
+      listed as deliberately hidden — never dropped silently. There is no
+      "advanced" toggle: the depth is present on the same screen, behind
+      disclosure, not behind a setting.</p>
+      <p class="small muted" style="margin-bottom:0">This is the hardest constraint. It
+      is why the layout is three columns plus a tabbed strip.</p>
+    </div>
+    <div class="col card blue">
+      <h3 style="color:#58a6ff">3 · The numbers stay honest</h3>
+      <p class="small">Every figure on screen is traceable to the run data. Nothing is
+      rounded into a lie, invented for effect, or shown without the rule that produced
+      it.</p>
+      <p class="small muted" style="margin-bottom:0">The score panel exists for this
+      reason: it shows the arithmetic, not just the result.</p>
+    </div>
+  </div>
+
+  <div class="card flat" style="margin-top:4mm">
+    <p class="small" style="margin-bottom:0"><b>Our working definition of failure:</b> a
+    reviewer who has never seen this app cannot answer any of the four questions in
+    objective 1 after 60 seconds, or answers one wrongly from what is on screen.</p>
+  </div>
+</section>
+
+<!-- 5 ─────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <h2>The screen, full size</h2>
+    <p class="small muted" style="margin-bottom:2.5mm">One recorded run, mid-debate — round 1 of 2, arbiter step selected. The numbers below are the regions described on the following slides.</p>
+  <div class="annot" style="width:188mm">
+    <img src="shots/full-converge-r1-arbiter.jpg" alt="The full interface at 1600x1000, round 1 of 2 with the arbiter step selected; seven numbered rings mark the regions described on the following slides" style="width:100%;display:block;border-radius:2mm;border:1px solid #2a323d">
+    <div class="ring r1" style="left:0.75%;top:1.2%;width:98.5%;height:12.42%"></div>
+    <div class="ring r2" style="left:0.75%;top:14.62%;width:18.75%;height:40.08%"></div>
+    <div class="ring r3" style="left:20.13%;top:14.62%;width:37.38%;height:18.74%"></div>
+    <div class="ring r4" style="left:20.13%;top:34.36%;width:37.38%;height:34.27%"></div>
+    <div class="ring r5 a" style="left:58.13%;top:14.62%;width:41.12%;height:46.43%"></div>
+    <div class="ring r6 g" style="left:58.13%;top:62.06%;width:41.12%;height:22.52%"></div>
+    <div class="ring r7" style="left:0.75%;top:85.57%;width:98.5%;height:14.43%"></div>
+  </div>
+  <div class="legend" style="margin-top:3mm;columns:2;column-gap:8mm;font-size:8pt">
+    <div><b>1</b> Summary bar — outcome, score vs target, rounds used, artifact counts, time and tokens</div>
+    <div><b>2</b> Conversation rail — every step of every round, one row each</div>
+    <div><b>3</b> Process diagram — the five steps and the two exits from the arbiter</div>
+    <div><b>4</b> Score by round, against the target line</div>
+    <div class="a"><b class="k5">5</b> Detail panel — the selected step, in that agent's own shape</div>
+    <div class="g"><b class="k6">6</b> Round arithmetic — the two weighted terms and the three stop conditions</div>
+    <div><b>7</b> Data tabs — timing, evidence, settings, all fields, glossary</div>
+  </div>
+</section>
+
+<!-- 6 ────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="headrow"><div class="hleft"><h2>1 · Summary bar</h2><p class="small muted">The full-width strip at the very top, above every panel. It is the only region that answers "what happened" without reading anything else.</p></div><div class="mini"><div class="annot"><img src="shots/full-converge-r1-arbiter.jpg" alt="Mini-map: the full screen with the region this slide covers ringed"><div class="ring" style="left:0.75%;top:1.2%;width:98.5%;height:12.42%"></div></div><span>region 1 of the full screen</span></div></div>
+  <figure class="plain"><img src="shots/header-tiles.jpg"><figcaption><b>Settled run.</b> Ten tiles answer "what happened" before any reading: outcome, rounds used against the limit, final score against its target, how much of each artifact the run produced, wall time and token cost.</figcaption></figure>
+  <figure class="plain"><img src="shots/head-forced.jpg"><figcaption><b>The same bar on a run that never agreed.</b> Only two tiles change: the outcome word and its colour, and the score. Rounds reads 2/2 rather than 2/6 — the cap, not agreement, ended this run.</figcaption></figure>
+  <div class="row3">
+    <div class="cell card flat"><h3>Decisions to critique</h3><ul class="t small" style="margin-bottom:0">
+      <li>Four distinct layouts for one region — does consistency suffer, or does each read better?</li>
+      <li>Ids are shown on every item so anything can be cross-referenced. Trust, or noise?</li>
+      <li>Agent vocabulary ("stance", "dimension", "tension") is tooltipped, not inline. Enough?</li>
+      <li>Cross-links jump to the referenced item and flash it. Obvious the first time?</li>
+      <li>Each card ends with timing chips. Do they belong here, or in the Timing tab?</li>
+    </ul></div>
+    <div class="cell"><figure class="plain"><img src="shots/detail-merge.jpg"><figcaption><b>Synthesizer.</b> Merged answer, settled vs open disagreements, contributing claims.</figcaption></figure></div>
+    <div class="cell"><figure class="plain"><img src="shots/detail-arbiter.jpg"><figcaption><b>Arbiter.</b> The only non-LLM step: cosine comparisons, three checks, next-round instruction.</figcaption></figure></div>
+  </div>
+</section>
+
+<!-- 7 ────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="headrow"><div class="hleft"><h2>2 · The process, drawn</h2><p class="small muted">Top centre. A diagram, not a list: the five steps, and the two possible exits from the arbiter.</p></div><div class="mini"><div class="annot"><img src="shots/full-converge-r1-arbiter.jpg" alt="Mini-map: the full screen with the region this slide covers ringed"><div class="ring" style="left:20.13%;top:14.62%;width:37.38%;height:18.74%"></div></div><span>region 3 of the full screen</span></div></div>
+  <div class="cols">
+    <div class="col"><figure class="plain"><img src="shots/flow.jpg"><figcaption><b>Round 1, arbiter selected.</b> Node colours are per agent; the loop edge is lit when the arbiter asked for another round.</figcaption></figure></div>
+    <div class="col"><figure class="plain"><img src="shots/flow-forced.jpg"><figcaption><b>Round 2 of a run that never agreed.</b> The loop edge is grey and captioned "no further round"; the exit edge is lit.</figcaption></figure></div>
+  </div>
+  <p class="small" style="margin-top:1mm">The five steps sit left to right with the count of what each produced underneath. Two edges leave the arbiter: one loops back to the Researcher, one exits to the final answer. Exactly one is highlighted at a time, so "why is there another round?" is answered by shape, not by a sentence. Same diagram, opposite decision — the shape carries the meaning without reading the score.</p>
+  <div class="row3">
+    <div class="cell card flat"><h3>Decisions to critique</h3><ul class="t small" style="margin-bottom:0">
+      <li>Is a diagram the right first thing after the summary, or does it postpone the content?</li>
+      <li>Does the loop edge read as "goes back" without the caption?</li>
+      <li>Nodes are also the navigation. Is that discoverable?</li>
+      <li>Two controls at once — play, and per-round pills. Redundant, or useful?</li></ul></div>
+    <div class="col card flat amber"><h3>Known weakness</h3><p class="small" style="margin-bottom:0">The exit edge and its "final" label sit tight against the panel's right edge; at narrower widths that label is the first thing to look cramped. The arbiter is described as "a plain program, not an AI model" only in its panel subtitle — should that be on the node itself?</p></div>
+  </div>
+</section>
+
+<!-- 8 ────────────────────────────────────────────── -->
+<section class="slide charts">
+  <div class="bar"></div>
+  <div class="headrow"><div class="hleft"><h2>3 · The score, and its arithmetic</h2><p class="small muted">Centre column under the diagram, plus the panel to its right. The chart is the shape; the panel is the arithmetic.</p></div><div class="mini"><div class="annot"><img src="shots/full-converge-r1-arbiter.jpg" alt="Mini-map: the full screen with the region this slide covers ringed"><div class="ring" style="left:20.13%;top:34.36%;width:37.38%;height:34.27%"></div></div><span>region 4 of the full screen</span></div></div>
+  <div class="cols">
+    <div class="col"><figure class="plain"><img src="shots/chart.jpg"><figcaption><b>A run that settled.</b> Round 1 scores 0.00, round 2 scores 1.00, against a 0.65 target.</figcaption></figure></div>
+    <div class="col"><figure class="plain"><img src="shots/chart-forced.jpg"><figcaption><b>A run that cannot settle.</b> Target 1.01 is unreachable, so the dashed line pins to the chart's top (1.0) and never moves; scores fall from 0.20 to 0.15.</figcaption></figure></div>
+  </div>
+  <div class="cols" style="margin-top:1mm">
+    <div class="col card flat"><h3>Round 1 of the settled run, decomposed</h3>
+      <table style="font-size:8.5pt">
+        <tr><th>input</th><th class="n">value</th><th class="n">weight</th><th class="n">term</th></tr>
+        <tr><td>alignment</td><td class="n">0.0000</td><td class="n">× 0.80</td><td class="n">0.0000</td></tr>
+        <tr><td>1 − opposition (1 of 1)</td><td class="n">0.0000</td><td class="n">× 0.20</td><td class="n">0.0000</td></tr>
+        <tr class="hi"><td>score</td><td class="n"></td><td class="n"></td><td class="n"><b>0.0000</b></td></tr>
+      </table>
+      <p class="small muted" style="margin:2mm 0 0">Round 1 has nothing earlier to compare with, so alignment is 0 by definition — the panel says so in words rather than showing a bare zero.</p></div>
+    <div class="col card flat"><h3>Decisions to critique</h3><ul class="t small" style="margin-bottom:0">
+      <li>Is the arithmetic worth the space for a beginner, or is it expert-only content that belongs behind disclosure?</li>
+      <li>Three red ✗ chips on a normal intermediate round look like an error. Do they?</li>
+      <li>Two charts of the same measure, one per run. Does the contrast earn the second?</li>
+      <li>The chart has no y-axis title beyond 0 and 1. Is the scale obvious?</li></ul></div>
+  </div>
+</section>
+
+<!-- 9 ────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="headrow"><div class="hleft"><h2>4 · The conversation, as an index</h2><p class="small muted">The whole left column, full height. The only chronological view in the app.</p></div><div class="mini"><div class="annot"><img src="shots/full-converge-r1-arbiter.jpg" alt="Mini-map: the full screen with the region this slide covers ringed"><div class="ring" style="left:0.75%;top:14.62%;width:18.75%;height:40.08%"></div></div><span>region 2 of the full screen</span></div></div>
+  <div class="cols">
+    <div class="col col-35"><figure class="plain"><img src="shots/rail.jpg"><figcaption><b>The rail, full height.</b> Two rounds expanded; the final answer pinned at the bottom.</figcaption></figure></div>
+    <div class="col col-60">
+      <p class="small">Every step of every round is one row: agent, a one-line preview, and — for the arbiter — the round's score. Selecting a row changes the two right-hand panels without navigating. The rail is the app's only chronological view.</p>
+      <div class="card flat"><h3>Decisions to critique</h3><ul class="t small" style="margin-bottom:0">
+        <li>Is this better than a linear transcript, where reading order is debate order?</li>
+        <li>Previews are cut at one line. Useful index, or teasers that force clicking?</li>
+        <li>The score is visible only on the arbiter row. Should every round row carry an outcome badge?</li>
+        <li>Round 1 and round 2 rows look identical in structure. Is repetition clearer than difference here?</li></ul></div>
+      <div class="card flat amber"><h3>Known weakness</h3><p class="small" style="margin-bottom:0">Long runs (up to 6 rounds plus the final answer) exceed the rail's height, so it scrolls independently of the page. Two scrollbars on one screen is a real cost.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 ───────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="headrow"><div class="hleft"><h2>5 · The detail panel — one region, four shapes</h2><p class="small muted">Right column, top. Selecting a step swaps this panel; each agent's output has a different structure, so the panel changes shape rather than forcing one template.</p></div><div class="mini"><div class="annot"><img src="shots/full-converge-r1-arbiter.jpg" alt="Mini-map: the full screen with the region this slide covers ringed"><div class="ring r5" style="left:58.13%;top:14.62%;width:41.12%;height:46.43%"></div></div><span>region 5 of the full screen</span></div></div>
+  <table class="figs"><tr>
+    <td><figure class="plain"><img src="shots/detail-claim.jpg"><figcaption><b>Researcher.</b> Claim, evidence summary, rated dimensions, meaning vector as a sparkline.</figcaption></figure></td>
+    <td><figure class="plain"><img src="shots/detail-skeptic.jpg"><figcaption><b>Skeptic.</b> Stance badge, reasoning, link to the claim it targets.</figcaption></figure></td>
+  </tr></table>
+  <table class="figs"><tr>
+    <td><figure class="plain"><img src="shots/detail-merge.jpg"><figcaption><b>Synthesizer.</b> Merged answer, settled vs open disagreements, contributing claims.</figcaption></figure></td>
+    <td><figure class="plain"><img src="shots/detail-arbiter.jpg"><figcaption><b>Arbiter.</b> The only non-LLM step: cosine comparisons, three checks, next-round instruction.</figcaption></figure></td>
+  </tr></table>
+  <div class="card flat" style="margin-top:1mm"><h3>Decisions to critique</h3><ul class="t small two" style="margin-bottom:0">
+    <li>Four distinct layouts for one region — does consistency suffer, or does each read better?</li>
+    <li>Ids are on every item so anything can be cross-referenced. Trust, or noise?</li>
+    <li>Agent vocabulary ("stance", "dimension", "tension") is tooltipped, not inline. Enough?</li>
+    <li>Cross-links jump to the referenced item and flash it. Obvious the first time?</li>
+    <li>Each card ends with timing chips. Do they belong here, or in the Timing tab?</li>
+  </ul></div>
+</section>
+
+<!-- 11 ───────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="headrow"><div class="hleft"><h2>6 · Below the fold: everything else</h2><p class="small muted">The full-width strip along the bottom of the window.</p></div><div class="mini"><div class="annot"><img src="shots/full-converge-r1-arbiter.jpg" alt="Mini-map: the full screen with the region this slide covers ringed"><div class="ring" style="left:58.13%;top:14.62%;width:41.12%;height:46.43%"></div></div><span>region 7 of the full screen</span></div></div>
+  <p class="small muted" style="margin-bottom:2mm">Five tabs hold the rest of the run data. One click away, always present, never optional.</p>
+  <div class="cols">
+    <div class="col"><figure class="plain"><img src="shots/tab-timing.jpg"><figcaption><b>Timing</b> — every step as a waterfall bar. Model calls dominate total time.</figcaption></figure>
+      <figure class="plain" style="margin-top:2mm"><img src="shots/tab-evidence.jpg"><figcaption><b>Evidence</b> — the five retrieved documents with similarity; one is negative (unrelated).</figcaption></figure></div>
+    <div class="col"><figure class="plain"><img src="shots/tab-fields.jpg"><figcaption><b>Fields</b> — all 58 state fields, grouped, so nothing is silently hidden.</figcaption></figure>
+      <figure class="plain" style="margin-top:2mm"><img src="shots/tab-terms.jpg"><figcaption><b>Terms</b> — the glossary, including what "replay" means for this build.</figcaption></figure></div>
+  </div>
+  <div class="card flat" style="margin-top:1mm">
+    <p class="small" style="margin-bottom:0"><b>The question this slide exists for:</b> is a five-tab strip of raw data the right home for "show everything", or a dumping ground that turns the honest-inventory objective into a checkbox? We do not have an answer.</p>
+  </div>
+</section>
+
+<!-- 12 ────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <h2>The same screen, two endings</h2>
+    <div class="cols" style="margin-top:1mm">
+    <div class="col">
+      <figure class="plain"><img src="shots/head-end.jpg"><figcaption><b>Settled.</b> Outcome tile green, "Agreed"; score 1.00 against a 0.65 target.</figcaption></figure>
+      <figure class="plain"><img src="shots/finalcard-end.jpg"><figcaption><b>Final card.</b> Green badge, "Rests on" one claim, two challenges listed as never settled.</figcaption></figure>
+    </div>
+    <div class="col">
+      <figure class="plain"><img src="shots/head-forced.jpg"><figcaption><b>Stopped by the limit.</b> Outcome tile red, "Forced stop"; score 0.15 against an unreachable 1.01 target.</figcaption></figure>
+      <figure class="plain"><img src="shots/finalcard-forced.jpg"><figcaption><b>Same final card.</b> Red badge, same structure, same prominence, same "Rests on".</figcaption></figure>
+    </div>
+  </div>
+  <div class="cols" style="margin-top:2mm;flex:0 0 auto">
+    <div class="col card green">
+      <h3 style="color:#3fb950">What actually differs</h3>
+      <p class="small" style="margin-bottom:0">Four things: the outcome tile's word and colour,
+      the final card's badge, the arbiter's verdict chip, and the score. Layout, panels,
+      tabs and wording are otherwise identical.</p>
+    </div>
+    <div class="col card red">
+      <h3 style="color:#f85149">Does that read?</h3>
+      <p class="small" style="margin-bottom:0">A forced stop means the agents did <i>not</i>
+      agree, yet the answer keeps the same prominence and the same "Rests on"
+      structure. Is a colour plus one word enough to stop a reader taking an
+      unconverged answer as the group's conclusion?</p>
+    </div>
+  </div>
+</section>
+
+<!-- 13 ────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <h2>What you should not judge yet</h2>
+    <div class="cols">
+    <div class="col col-55">
+      <div class="card amber">
+        <h3 style="color:#d29922">This build replays a recording</h3>
+        <p class="small">The screenshots are of the real application running the real agent
+        code — but the model answers are a recording played back through a local stub,
+        and the meaning vectors are placeholders derived from hashing the text. So the
+        scores are internally consistent and structurally correct, and they are
+        <b>not</b> evidence that the debate quality is good.</p>
+        <p class="small" style="margin-bottom:0">The app says this itself — the
+        <span class="chip a">replay</span> chip in the header, hovered for its definition,
+        and the Terms tab. Please critique the <i>design</i>, not the wording or insight
+        of the agent output.</p>
+      </div>
+      <div class="card flat">
+        <h3>Also out of scope</h3>
+        <ul class="t small" style="margin-bottom:0">
+          <li>Live streaming — this version renders a finished run.</li>
+          <li>Starting a new run from the UI; the run is chosen from two recordings.</li>
+          <li>Light theme, small screens, and keyboard-only operation are implemented but not shown here.</li>
+          <li>No data entry of any kind. This is a read-only viewer.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col col-45">
+      <div class="card flat">
+        <h3>How we check it ourselves</h3>
+        <p class="small">Every panel is checked against the run data programmatically:
+        the rendered numbers are compared field by field with the source values, and
+        the prose claims about how scoring works are checked against the code.</p>
+        <p class="small muted" style="margin-bottom:0">That catches wrong numbers. It
+        cannot catch "this is confusing", which is why this pack exists.</p>
+      </div>
+      <div class="bignum">
+        <div><b>58</b><span>state fields</span></div>
+        <div><b>8</b><span>field groups</span></div>
+        <div><b>19</b><span>timed steps</span></div>
+        <div><b>2</b><span>rounds shown</span></div>
+      </div>
+      <p class="small muted">Read from the run report that feeds every panel on screen.</p>
+      <div class="card flat">
+        <h3>What we already suspect</h3>
+        <ul class="t small" style="margin-bottom:0">
+          <li>The rail's independent scrollbar is a cost we accepted, not solved.</li>
+          <li>Ten summary tiles is probably three tiles plus seven.</li>
+          <li>The five data tabs may be an inventory disguised as a feature.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 ────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <h2>The critique we want</h2>
+    <p class="lead" style="max-width:190mm">Ten questions, ordered by how much a different answer would change the design.
+  Answer in any depth; the ones you cannot answer are as useful as the ones you can.</p>
+  <div class="cols" style="margin-top:3mm">
+    <div class="col col-55">
+      <ol class="q">
+        <li>Without scrolling: what is this screen for, and what is the one thing it wants you to conclude?</li>
+        <li>Point at the region you would remove first. What did it cost you to keep it?</li>
+        <li>Can you tell, from the screen alone, why round 1 continued and round 2 stopped?</li>
+        <li>Is the score meaningful after the arithmetic panel, or still opaque?</li>
+        <li>Where did you have to read more than one sentence to understand a number?</li>
+        <li>Which word on screen would you not have understood a year ago?</li>
+        <li>Does the five-tab strip at the bottom feel like completeness or clutter?</li>
+        <li>Would you have found the final answer without being told where it is?</li>
+        <li>In the forced-stop run, would you have noticed the agents never agreed?</li>
+        <li>If this were your product, what would you change before showing it to anyone else?</li>
+      </ol>
+    </div>
+    <div class="col col-45">
+      <div class="card flat">
+        <h3>How to give the feedback</h3>
+        <p class="small">Be blunt and specific. "Panel 4 is noise" is useful; "the design is
+        clean" is not. For every problem, say what you expected to see instead — that is
+        the part we can act on.</p>
+        <p class="small muted" style="margin-bottom:0">You do not need to be gentle about
+        the visual style, the density, or the vocabulary.</p>
+      </div>
+      <div class="card flat">
+        <h3>What we will do with it</h3>
+        <p class="small" style="margin-bottom:0">Each region you mark is either cut, moved
+        behind disclosure, or defended. We will report back on which, and why.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 15 ────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="bar"></div>
+  <h2>Worksheet</h2>
+    <p class="small muted" style="margin-bottom:3mm">Print this page, or copy the table into whatever you take notes in. One line per region.</p>
+  <table style="font-size:10pt">
+    <tr><th style="width:22%">Region</th><th style="width:20%">Keep / change / remove</th><th>Why — and what you expected instead</th></tr>
+    <tr><td><b>1</b> Summary bar</td><td style="color:#6b7686">&nbsp;</td><td style="color:#6b7686">&nbsp;</td></tr>
+    <tr><td><b>2</b> Conversation rail</td><td style="color:#6b7686">&nbsp;</td><td style="color:#6b7686">&nbsp;</td></tr>
+    <tr><td><b>3</b> Process diagram</td><td style="color:#6b7686">&nbsp;</td><td style="color:#6b7686">&nbsp;</td></tr>
+    <tr><td><b>4</b> Score chart</td><td style="color:#6b7686">&nbsp;</td><td style="color:#6b7686">&nbsp;</td></tr>
+    <tr><td><b>5</b> Detail panel</td><td style="color:#6b7686">&nbsp;</td><td style="color:#6b7686">&nbsp;</td></tr>
+    <tr><td><b>6</b> Round arithmetic</td><td style="color:#6b7686">&nbsp;</td><td style="color:#6b7686">&nbsp;</td></tr>
+    <tr><td><b>7</b> Data tabs</td><td style="color:#6b7686">&nbsp;</td><td style="color:#6b7686">&nbsp;</td></tr>
+    <tr><td style="height:16mm"><b>Other</b></td><td style="color:#6b7686">&nbsp;</td><td style="color:#6b7686">&nbsp;</td></tr>
+  </table>
+  <div class="card flat" style="margin-top:4mm">
+    <p class="small" style="margin-bottom:0"><b>One last question, and the one we care most about:</b>
+    after this pack, could you explain to someone else what a round is and why the debate
+    ended when it did? If not, say where it broke.</p>
+  </div>
+</section>
+
+</body>
+</html>
