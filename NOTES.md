@@ -35,3 +35,15 @@
 - Uses `make check` as the repo's CI-shaped command; `.venv/bin/python` for Python tools.
 - Comfortable with agents running long autonomous loops; wants a single late checkpoint
   with a decision-ready brief rather than per-step approval.
+
+## Loop decisions (grilled 2026-11-02)
+
+- **Scope**: all decks in `ui/deckgen/`; the control deck is the acceptance surface.
+- **Trigger**: manual — invoked as `/deckgen-loop`. The loop is the agent iterating
+  itself (diagnose → fix → verify → accept → commit), not a file watcher.
+- **Grader**: frozen five-axis `jev_noul` + measured type inventory (noise floor ±0.02).
+- **Checkpoint**: none. A conventional commit per generation; `README.md` updated in the
+  same commit when a directive, family, dependency, or tool is added. Jev gates completion.
+- **Exit bar**: every applicable axis ≥ 0.85; regression guard 0.05; cap 6 generations;
+  saturation stop when two generations move the targeted axis under the noise floor.
+- **Skill**: `~/.omp/agent/skills/deckgen-loop/SKILL.md` (user-invoked, no description cost).
