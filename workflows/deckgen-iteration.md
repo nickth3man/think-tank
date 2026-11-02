@@ -74,5 +74,12 @@ Two failures cost this loop real generations; both are structural, not stylistic
 - **A score describes one artifact.** A grade is valid only for the exact render that
   passed its gate. Any renderer or deck edit after grading voids the score — re-render,
   re-gate, re-grade; never carry a number across a change.
+- **Pin the transcript, count only real moves.** Write the per-page transcript to a file
+  and reuse it verbatim whenever the deck copy is unchanged (same spec text ⇒ same
+  transcript); changed-axis sentences get a minimal diff, or generations stop being
+  comparable. Single grades swing inside the floor (±0.02 identical-transcript; measured
+  sd ≤ 0.012 at the strict bar): an axis has moved only beyond that band, and a plateau
+  is three consecutive generations whose composite moves within it. Chasing the judge
+  inside its own noise — rewording prose, re-rolling grades — is grading to the test.
 - **Gate what the change touches.** Renderer edits propagate to every deck; gating only the
   deck you edited ships an unverified layout to the others.
