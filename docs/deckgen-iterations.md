@@ -1,7 +1,7 @@
 # deckgen iteration log
 
 > **Moved:** the deckgen tool, skill, loop workflow and grade instrument now live in
-> [nickth3man/deckgen](https://github.com/nickth3man/deckgen). This log is the historical
+> [nicolas-found42/deckgen](https://github.com/nicolas-found42/deckgen). This log is the historical
 > record through gen 17 and the strict-bar pass; paths below (`tools/deckgen/...`,
 > `ui/deckgen/...`) refer to their locations at the time of each entry.
 
