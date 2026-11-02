@@ -1,4 +1,4 @@
-"""Tests for think_tank/arbiter.py — pure alignment logic (no LLM calls)."""
+"""Tests for think_tank/agents/arbiter.py — pure alignment logic (no LLM calls)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from tests.conftest import make_challenge, make_claim
-from think_tank.arbiter import (
+from think_tank.agents.arbiter import (
     _challenge_resolution_rate,
     _cosine_similarity,
     _find_weak_dimensions,
@@ -16,7 +16,7 @@ from think_tank.arbiter import (
     arbiter_node,
     route_after_arbiter,
 )
-from think_tank.schemas import Claim, Stance, Synthesis
+from think_tank.schemas import Challenge, Claim, Stance, Synthesis
 from think_tank.state import ThinkTankState
 
 # ---------------------------------------------------------------------------
@@ -59,19 +59,31 @@ class TestCosineSimilarity:
 
 
 class TestPairwiseAlignment:
-    def test_single_claim_returns_one(self, aligned_claims: list[Claim]) -> None:
-        assert _pairwise_alignment([aligned_claims[0]]) == pytest.approx(1.0)
+    """Alignment must respond to the deliberation, not be a constant.
+
+    Only one agent emits claims, so the intra-round comparison alone returned a
+    fixed 1.0 and handed every run a free 0.6 score.
+    """
+
+    def test_single_claim_with_no_history_is_not_aligned(self, aligned_claims: list[Claim]) -> None:
+        assert _pairwise_alignment([aligned_claims[0]], []) == pytest.approx(0.0)
 
     def test_aligned_claims_return_one(self, aligned_claims: list[Claim]) -> None:
-        score = _pairwise_alignment(aligned_claims)
-        assert score == pytest.approx(1.0, abs=1e-4)
+        assert _pairwise_alignment(aligned_claims, []) == pytest.approx(1.0, abs=1e-4)
 
     def test_orthogonal_claims_return_zero(self, diverged_claims: list[Claim]) -> None:
-        score = _pairwise_alignment(diverged_claims)
-        assert score == pytest.approx(0.0, abs=1e-4)
+        assert _pairwise_alignment(diverged_claims, []) == pytest.approx(0.0, abs=1e-4)
 
-    def test_empty_list_returns_one(self) -> None:
-        assert _pairwise_alignment([]) == pytest.approx(1.0)
+    def test_empty_list_returns_zero(self) -> None:
+        assert _pairwise_alignment([], []) == pytest.approx(0.0)
+
+    def test_stable_position_across_rounds_scores_high(self, aligned_claims: list[Claim]) -> None:
+        current, prior = aligned_claims[0], aligned_claims[1]
+        assert _pairwise_alignment([current], [prior]) == pytest.approx(1.0, abs=1e-4)
+
+    def test_reversed_position_across_rounds_scores_low(self, diverged_claims: list[Claim]) -> None:
+        current, prior = diverged_claims[0], diverged_claims[1]
+        assert _pairwise_alignment([current], [prior]) == pytest.approx(0.0, abs=1e-4)
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +199,7 @@ class TestArbiterNode:
             "synthesis": None,
             "expansion": None,
             "alignment_score": 0.0,
+            "evidence": "",
         }
 
     def test_converges_when_aligned_and_min_rounds_met(self, aligned_claims: list[Claim]) -> None:
@@ -216,14 +229,32 @@ class TestArbiterNode:
         assert isinstance(result["synthesis"], Synthesis)
 
     def test_expands_below_min_rounds_even_if_aligned(self, aligned_claims: list[Claim]) -> None:
-        # aligned_claims have round=1; current_round=1 matches
+        # current_round is 0-based: round 0 means one round completed, which is
+        # below min_rounds=2, so the arbiter must expand even when aligned.
+        claims = [
+            make_claim(agent_id=c.agent_id, round=0, embedding=c.embedding) for c in aligned_claims
+        ]
         state = self._make_state(
-            claims=aligned_claims,
-            current_round=1,
+            claims=claims,
+            current_round=0,
             config={"alignment_threshold": 0.75, "min_rounds": 2, "max_rounds": 6},
         )
         result = arbiter_node(state)
         assert result["expansion"] is not None
+
+    def test_converges_once_min_rounds_completed(self, aligned_claims: list[Claim]) -> None:
+        # Round 1 is the second round completed, so min_rounds=2 is satisfied.
+        claims = [
+            make_claim(agent_id=c.agent_id, round=1, embedding=c.embedding) for c in aligned_claims
+        ]
+        state = self._make_state(
+            claims=claims,
+            current_round=1,
+            config={"alignment_threshold": 0.75, "min_rounds": 2, "max_rounds": 6},
+        )
+        result = arbiter_node(state)
+        assert result["synthesis"] is not None
+        assert result["synthesis"].rounds_taken == 2
 
     def test_alignment_score_clamped_between_0_and_1(self, aligned_claims: list[Claim]) -> None:
         # Use round=3 claims to match current_round=3
@@ -265,6 +296,7 @@ class TestArbiterNode:
             "alignment_score": 0.0,
             "expansion": None,
             "synthesis": synthesis,
+            "evidence": "",
         }
         assert route_after_arbiter(state) == "__end__"
 
@@ -280,5 +312,60 @@ class TestArbiterNode:
             "alignment_score": 0.0,
             "expansion": None,
             "synthesis": None,
+            "evidence": "",
         }
         assert route_after_arbiter(state) == "researcher"
+
+
+class TestCompositeWeights:
+    """The composite must be reachable and must respond to the evidence it sees.
+
+    `Challenge.resolved` is never set by any producer, so a fixed 0.25 weight on
+    the resolution rate made 0.75 the ceiling for the old formula — every run
+    reported the identical score regardless of what the agents actually said.
+    """
+
+    def _score(self, claims: list[Claim], challenges: list[Challenge], round_: int) -> float:
+        state: ThinkTankState = {
+            "topic": "t",
+            "claims": claims,
+            "challenges": challenges,
+            "current_round": round_,
+            "config": {"alignment_threshold": 0.75, "min_rounds": 99, "max_rounds": 99},
+            "syntheses": [],
+            "expansions": [],
+            "synthesis": None,
+            "expansion": None,
+            "alignment_score": 0.0,
+            "evidence": "",
+        }
+        return arbiter_node(state)["alignment_score"]
+
+    def test_score_is_reachable_without_resolution_signal(
+        self, aligned_claims: list[Claim]
+    ) -> None:
+        claims = [
+            make_claim(agent_id=c.agent_id, round=3, embedding=c.embedding) for c in aligned_claims
+        ]
+        challenges = [make_challenge(round=3, resolved=False, stance=Stance.REFINE)]
+        assert self._score(claims, challenges, 3) == pytest.approx(1.0, abs=1e-4)
+
+    def test_opposing_challenges_lower_the_score(self, aligned_claims: list[Claim]) -> None:
+        claims = [
+            make_claim(agent_id=c.agent_id, round=3, embedding=c.embedding) for c in aligned_claims
+        ]
+        cooperative = self._score(claims, [make_challenge(round=3, stance=Stance.REFINE)], 3)
+        opposing = self._score(claims, [make_challenge(round=3, stance=Stance.OPPOSE)], 3)
+        assert opposing < cooperative
+
+    def test_score_is_not_a_constant_across_deliberations(
+        self, aligned_claims: list[Claim], diverged_claims: list[Claim]
+    ) -> None:
+        aligned = [
+            make_claim(agent_id=c.agent_id, round=3, embedding=c.embedding) for c in aligned_claims
+        ]
+        diverged = [
+            make_claim(agent_id=c.agent_id, round=3, embedding=c.embedding) for c in diverged_claims
+        ]
+        ch = [make_challenge(round=3, stance=Stance.REFINE)]
+        assert self._score(aligned, ch, 3) != self._score(diverged, ch, 3)

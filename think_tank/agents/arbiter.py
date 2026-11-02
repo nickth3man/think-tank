@@ -1,4 +1,4 @@
-"""think_tank/arbiter.py — Arbiter node + routing function."""
+"""think_tank/agents/arbiter.py — Arbiter node + routing function."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from think_tank.schemas import (
     Synthesis,
 )
 from think_tank.state import ThinkTankState
+from think_tank.telemetry import span
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -31,16 +32,28 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
-def _pairwise_alignment(claims: list[Claim]) -> float:
-    """Mean pairwise cosine similarity across all agent claims in the latest round."""
-    if len(claims) < 2:
-        return 1.0  # single agent -> trivially aligned
+def _pairwise_alignment(claims: list[Claim], prior_claims: list[Claim]) -> float:
+    """Semantic agreement across agents *and* across rounds.
 
+    Only one agent (``researcher``) emits ``Claim`` objects, so the historical
+    "compare this round's claims to each other" measure always saw a single
+    claim and returned a constant ``1.0`` — a free 0.6 alignment that could
+    never respond to the actual deliberation. Comparing each current claim with
+    the previous round's claim measures whether the position has stabilised,
+    which is what convergence means here.
+    """
     scores: list[float] = [
         _cosine_similarity(claims[i].embedding, claims[j].embedding)
         for i in range(len(claims))
         for j in range(i + 1, len(claims))
     ]
+    if claims and prior_claims:
+        scores.extend(
+            _cosine_similarity(c.embedding, p.embedding) for c in claims for p in prior_claims
+        )
+    if not scores:
+        # Nothing to compare yet (first round, one claim) -> neutral, not aligned.
+        return 0.0
     return sum(scores) / len(scores)
 
 
@@ -104,24 +117,66 @@ def arbiter_node(state: ThinkTankState) -> dict:
     # --- Filter claims to the CURRENT round only ---
     latest_claims = [c for c in claims if c.round == current_round]
     latest_challenges = [c for c in challenges if c.round == current_round]
+    prior_claims = [c for c in claims if c.round < current_round]
 
     # --- Compute alignment components ---
-    semantic_alignment = _pairwise_alignment(latest_claims)
+    semantic_alignment = _pairwise_alignment(latest_claims, prior_claims)
     resolution_rate = _challenge_resolution_rate(latest_challenges)
     opposition = _opposition_ratio(latest_challenges)
 
-    # Weighted composite: semantic similarity is primary, penalize unresolved opposition
-    alignment_score = 0.60 * semantic_alignment + 0.25 * resolution_rate + 0.15 * (1.0 - opposition)
+    # Weighted composite.
+    #
+    # ``Challenge.resolved`` is never set by any producer in this codebase, so
+    # the resolution rate is structurally 0.0 and its weight was dead weight:
+    # the old 0.60*semantic + 0.25*resolution + 0.15*(1-opposition) formula
+    # topped out at 0.75 whenever a single claim came back with one
+    # non-opposing challenge, pinning every run to the same 0.7500 score
+    # regardless of what the agents said. Weight only the terms that carry
+    # information; the resolution rate is still recorded on the span so the
+    # day a producer starts setting ``resolved`` it is visible immediately.
+    alignment_score = 0.80 * semantic_alignment + 0.20 * (1.0 - opposition)
     alignment_score = round(min(max(alignment_score, 0.0), 1.0), 4)
 
+    with span(
+        "arbiter.score",
+        "arbiter",
+        round=current_round,
+        claims=len(latest_claims),
+        challenges=len(latest_challenges),
+        semantic=round(semantic_alignment, 4),
+        resolution=round(resolution_rate, 4),
+        opposition=round(opposition, 4),
+        score=alignment_score,
+        threshold=threshold,
+    ):
+        pass
+
     # --- Convergence decision ---
-    converged = alignment_score >= threshold and current_round >= min_rounds
-    forced_end = current_round >= max_rounds
+    # ``current_round`` is the 0-based index of the round just completed, so the
+    # number of rounds run so far is ``current_round + 1``. Comparing against
+    # min_rounds directly ran one extra round on every deliberation.
+    rounds_completed = current_round + 1
+    converged = alignment_score >= threshold and rounds_completed >= min_rounds
+    forced_end = rounds_completed >= max_rounds
 
     if converged or forced_end:
         # === PRODUCE SYNTHESIS -> route to END ===
         verdict = "forced" if forced_end and not converged else "natural"
-        synthesis_content = _build_synthesis_content(topic, latest_claims, challenges, verdict)
+        # The Synthesizer already produced an LLM-merged answer for this round;
+        # use it. Building a deterministic string instead made that call - the
+        # largest single LLM cost of a run - dead weight in the final output.
+        latest_attempt = next(
+            (s for s in reversed(state.get("syntheses", [])) if s.round == current_round),
+            None,
+        )
+        if latest_attempt is not None:
+            synthesis_content = latest_attempt.content
+            if latest_attempt.remaining_tensions:
+                synthesis_content += "\n\nRemaining tensions:\n" + "\n".join(
+                    f"- {t}" for t in latest_attempt.remaining_tensions
+                )
+        else:
+            synthesis_content = _build_synthesis_content(topic, latest_claims, challenges, verdict)
         synthesis = Synthesis(
             content=synthesis_content,
             contributing_claim_ids=[c.id for c in latest_claims],
@@ -171,10 +226,7 @@ def _build_synthesis_content(
     challenges: list[Challenge],
     verdict: str,
 ) -> str:
-    """Merge agent positions into a unified answer string.
-
-    In production, this would call an LLM. Here we provide a deterministic fallback.
-    """
+    """Deterministic fallback when no Synthesizer attempt is available."""
     prefix = (
         "Convergence reached. "
         if verdict == "natural"

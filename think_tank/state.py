@@ -27,6 +27,9 @@ class ThinkTankState(TypedDict):
     expansions: list[LateralIdea]  # Visionary's lateral ideas per round
     syntheses: list[SynthesisAttempt]  # Synthesizer's per-round merge attempts
 
+    # --- Retrieved evidence (fetched once, reused every round) ---
+    evidence: str
+
     # --- Arbiter outputs (written each round) ---
     current_round: int
     alignment_score: float  # 0.0 - 1.0

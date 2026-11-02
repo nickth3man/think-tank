@@ -24,17 +24,38 @@ START → Researcher → Skeptic → Visionary → Synthesizer → Arbiter
 ```bash
 uv sync
 python main.py          # CLI — prompts for a topic
-python app.py           # Gradio web UI at http://localhost:7860
+python app.py           # FastAPI observability dashboard at http://localhost:7860
 ```
 
 ## Prerequisites
 
-Copy `.env.example` to `.env` and set your OpenRouter API key:
+Credentials come from your shell environment — the app does not read `.env`.
+`.env.example` lists every supported variable; append the block you need to
+`~/.zshenv` and open a new shell:
 
 ```bash
-cp .env.example .env
-# edit .env and set OPENROUTER_API_KEY=sk-or-v1-...
+cat .env.example >> ~/.zshenv   # then uncomment the keys you have
 ```
+
+Providers speak the OpenAI chat-completions protocol, so switching is a matter
+of exporting a different key and setting `THINK_TANK_PROVIDER`:
+
+| Provider | Key variable | Chat | Embeddings | Default chat model |
+|----------|--------------|------|------------|--------------------|
+| `ollama_cloud` (default) | `OLLAMA_CLOUD_API_KEY` | ✅ | — | `deepseek-v4.1-flash` |
+| `mistral` | `MISTRAL_API_KEY` | ✅ | ✅ | `mistral-small-latest` |
+| `opencode` | `OPENCODE_API_KEY` | ✅ | — | `deepseek-v4.1-flash` |
+| `zai` | `ZAI_API_KEY` | ✅ | — | `glm-5.3` |
+| `openrouter` | `OPENROUTER_API_KEY` | ❌ | ✅ | — |
+
+OpenRouter is deliberately **not** a chat provider: it is reserved for
+embeddings and judge/decision models. Requesting it for agent chat raises an
+error instead of silently routing there.
+
+Chat and embeddings are selected independently: `THINK_TANK_PROVIDER` drives
+chat, `THINK_TANK_EMBEDDING_PROVIDER` drives retrieval (default `openrouter`).
+Each Chroma collection is namespaced per embedding space, so switching
+embedding models never mixes incompatible vectors.
 
 ## Project Structure
 
@@ -42,19 +63,24 @@ cp .env.example .env
 think_tank/
 ├── schemas.py          # Pydantic models (Claim, Challenge, Synthesis, …)
 ├── state.py            # LangGraph state definition (ThinkTankState)
+├── llm.py              # Provider registry + chat/embedding factories
+├── kb.py               # Chroma collection + seed documents
 ├── graph.py            # Graph topology construction
-├── arbiter.py          # Arbiter node + convergence logic
-└── agents/
-    ├── researcher.py   # Evidence-grounded claims via vector KB
-    ├── skeptic.py      # Structured challenge generation
-    ├── visionary.py    # Lateral idea proposals
-    └── synthesizer.py  # Cross-agent synthesis attempts
-tests/
-├── conftest.py         # Shared fixtures and factories
-├── test_schemas.py     # Pydantic model validation (hypothesis + freezegun)
-└── test_arbiter.py     # Alignment math unit tests
+├── runner.py           # Run setup shared by CLI + dashboard (config, seed, creds)
+├── telemetry.py        # Span recording + profiling reports
+├── agents/
+│   ├── researcher.py   # Evidence-grounded claims via vector KB
+│   ├── skeptic.py      # Structured challenge generation
+│   ├── visionary.py    # Lateral idea proposals
+│   ├── synthesizer.py  # Cross-agent synthesis attempts
+│   └── arbiter.py      # Arbiter node + convergence logic
+└── dashboard/
+    ├── events.py       # LangGraph stream → dashboard event mapping
+    └── server.py       # FastAPI app (routes, websocket streaming)
+web/index.html          # Dashboard frontend (served by /)
+tests/                  # Mirrors the package; conftest.py holds fixtures
 main.py                 # CLI entry point
-app.py                  # Gradio UI entry point
+app.py                  # Dashboard entry point (thin alias for the FastAPI app)
 ```
 
 ## Development
@@ -123,15 +149,39 @@ Key environment variables (see `.env.example`):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENROUTER_API_KEY` | — | **Required.** OpenRouter API key |
-| `DEFAULT_CHAT_MODEL` | `openai/gpt-4o-mini` | LLM for all agents |
-| `OPENROUTER_EMBEDDING_MODEL` | `openai/text-embedding-3-small` | Embeddings model |
+| `THINK_TANK_PROVIDER` | `ollama_cloud` | Chat provider (see table above) |
+| `THINK_TANK_CHAT_MODEL` | provider default | Model for all agents |
+| `THINK_TANK_EMBEDDING_PROVIDER` | `openrouter` | Embeddings provider |
+| `THINK_TANK_EMBEDDING_MODEL` | provider default | Embeddings model |
+| `THINK_TANK_<AGENT>_PROVIDER` | — | Per-agent provider override |
+| `THINK_TANK_<AGENT>_MODEL` | — | Per-agent model override |
+| `THINK_TANK_MAX_TOKENS` | `4096` | Runaway guard, not a length control — a tighter cap does not shorten output and can truncate a tool call |
+| `THINK_TANK_REASONING_EFFORT` | provider default | Sent only to providers that accept it (`ollama_cloud`); Mistral answers HTTP 400 |
+| `THINK_TANK_PROFILE` | unset | `1` prints a per-stage latency profile at exit and serves it on `/profile` |
 | `CHROMA_DB_PATH` | `./chroma_db` | Vector store path |
 
 Convergence parameters are passed at runtime in the state `config` dict:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `alignment_threshold` | `0.75` | Minimum score to declare convergence |
+| `alignment_threshold` | `0.65` | Minimum score to declare convergence |
 | `min_rounds` | `2` | Minimum deliberation rounds |
 | `max_rounds` | `6` | Hard ceiling — forces synthesis |
+
+The alignment score is `0.80 × semantic + 0.20 × (1 − opposition ratio)`.
+Semantic alignment compares this round's claim against the previous round's, so
+it measures whether the position has stabilised. `Challenge.resolved` is never
+set by any producer in this codebase, so the resolution rate is recorded on the
+`arbiter.score` span but is not weighted — including it capped the score at a
+constant `0.75` and made every run converge on the same number. Consequently
+`Synthesis.unresolved_challenges` currently lists every challenge as unresolved.
+
+### Profiling
+
+`THINK_TANK_PROFILE=1` records a span for every graph node, LLM call, embedding
+request and vector-store query, then prints exclusive time per kind plus the
+slowest spans. Every span is tagged with the run that produced it, so
+`GET /profile?run_id=<id>` separates concurrent websocket clients; `main.py`
+scopes its own report to the run it just executed. Output tokens dominate: latency tracks output length divided by
+provider throughput (~200 tok/s), so prompt brevity is the main lever, not
+parallelism.

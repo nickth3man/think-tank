@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import os
 import typing as t
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openrouter import ChatOpenRouter
 
+from think_tank.llm import agent_structured_llm
 from think_tank.schemas import Challenge, Claim, SkepticOutput
 from think_tank.state import ThinkTankState
+from think_tank.telemetry import span
 
 # ---------------------------------------------------------------------------
 # System Prompt
@@ -32,10 +32,13 @@ narrower scope.
 
 ## Output Rules
 - `target_claim_id`: Must exactly match a claim ID from the current round.
-- `content`: A precise, substantive challenge (≥ 50 words). No ad-hominem, no \
-trivial nitpicks — focus on the most impactful weakness.
-- `reasoning`: Explain your logic or cite counter-evidence.
+- `content`: Your challenge, 40-70 words. No ad-hominem, no trivial nitpicks — \
+focus on the most impactful weakness.
+- `reasoning`: Your logic or counter-evidence, <= 40 words.
 - `stance`: Choose the stance that best represents your assessment.
+
+## Brevity (tokens cost wall-clock)
+Completions are billed in latency: every extra 100 words costs ~0.5s. Write the minimum text that satisfies the rules above — no preamble, no restating the prompt, no meta-commentary, no bullet lists of everything you considered. Plain prose. Hit each length cap; never exceed it.
 
 ## Anti-patterns to avoid
 - Do not challenge every claim equally — pick the **one** that most needs scrutiny.
@@ -50,7 +53,7 @@ trivial nitpicks — focus on the most impactful weakness.
 _agent_id = "skeptic"
 
 
-def skeptic_node(state: ThinkTankState) -> dict:
+def _skeptic_node_body(state: ThinkTankState) -> dict:
     """
     LangGraph node: produces a structured Challenge targeting a specific claim.
 
@@ -109,9 +112,7 @@ def skeptic_node(state: ThinkTankState) -> dict:
     human_content = "\n\n".join(context_parts)
 
     # --- 3. LLM call with structured output ---
-    model_name = config.get("skeptic_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini"))
-    llm = ChatOpenRouter(model=model_name, temperature=0.3)
-    structured_llm = llm.with_structured_output(SkepticOutput, method="json_schema")
+    structured_llm = agent_structured_llm(_agent_id, config, SkepticOutput, temperature=0.3)
     output = t.cast(
         SkepticOutput,
         structured_llm.invoke(
@@ -133,3 +134,9 @@ def skeptic_node(state: ThinkTankState) -> dict:
     )
 
     return {"challenges": [*existing_challenges, challenge]}
+
+
+def skeptic_node(state: ThinkTankState) -> dict:
+    """Instrumented wrapper: records latency for the whole agent node."""
+    with span("skeptic", "node", round=state.get("current_round", 0)):
+        return _skeptic_node_body(state)

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import os
 import typing as t
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openrouter import ChatOpenRouter
 
+from think_tank.llm import agent_structured_llm
 from think_tank.schemas import Challenge, Claim, LateralIdea, VisionaryOutput
 from think_tank.state import ThinkTankState
+from think_tank.telemetry import span
 
 # ---------------------------------------------------------------------------
 # System Prompt
@@ -34,11 +34,13 @@ haven't considered.
 - **Constraint removal**: "What if [key constraint] didn't exist?"
 
 ## Output Rules
-- `content`: Your lateral idea (≥ 50 words). Be specific and actionable — vague \
+- `content`: Your lateral idea, 40-70 words. Be specific and actionable — vague \
 hand-waving is not helpful.
 - `related_claim_ids`: IDs of claims your idea builds on or responds to.
-- `novelty_rationale`: Explain why this idea is non-obvious AND why it could work \
-despite being unconventional.
+- `novelty_rationale`: Why this idea is non-obvious AND why it could work, <= 40 words.
+
+## Brevity (tokens cost wall-clock)
+Completions are billed in latency: every extra 100 words costs ~0.5s. Write the minimum text that satisfies the rules above — no preamble, no restating the prompt, no meta-commentary, no bullet lists of everything you considered. Plain prose. Hit each length cap; never exceed it.
 
 ## Quality bar
 - Surprising ≠ absurd. Your idea must be defensible with at least one concrete argument.
@@ -52,8 +54,11 @@ a structural insight).
 
 _agent_id = "visionary"
 
+#: Per-artefact character cap when rendering deliberation context.
+CONTENT_CHARS = 300
 
-def visionary_node(state: ThinkTankState) -> dict:
+
+def _visionary_node_body(state: ThinkTankState) -> dict:
     """
     LangGraph node: produces a LateralIdea that expands the solution space.
 
@@ -77,12 +82,14 @@ def visionary_node(state: ThinkTankState) -> dict:
     context_parts: list[str] = [f"## Topic\n{topic}"]
 
     if current_claims:
-        claim_lines = [f"- [{c.agent_id}] (ID: {c.id}) {c.content}" for c in current_claims]
+        claim_lines = [
+            f"- [{c.agent_id}] (ID: {c.id}) {c.content[:CONTENT_CHARS]}" for c in current_claims
+        ]
         context_parts.append("## Current Claims\n" + "\n".join(claim_lines))
 
     if current_challenges:
         challenge_lines = [
-            f"- [{ch.agent_id} -> {ch.stance.value}] {ch.content[:200]}"
+            f"- [{ch.agent_id} -> {ch.stance.value}] {ch.content[:150]}"
             for ch in current_challenges
         ]
         context_parts.append("## Current Challenges\n" + "\n".join(challenge_lines))
@@ -97,7 +104,7 @@ def visionary_node(state: ThinkTankState) -> dict:
     # Show our prior ideas for continuity (avoid repeating)
     my_prior = [e for e in existing_expansions if e.agent_id == _agent_id]
     if my_prior:
-        lines = [f"- {e.content[:150]}" for e in my_prior[-2:]]
+        lines = [f"- {e.content[:120]}" for e in my_prior[-2:]]
         context_parts.append("## Your Prior Ideas (do not repeat)\n" + "\n".join(lines))
 
     context_parts.append(
@@ -108,11 +115,9 @@ def visionary_node(state: ThinkTankState) -> dict:
     human_content = "\n\n".join(context_parts)
 
     # --- 2. LLM call with structured output ---
-    model_name = config.get(
-        "visionary_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini")
-    )
-    llm = ChatOpenRouter(model=model_name, temperature=0.7)  # higher temp for creativity
-    structured_llm = llm.with_structured_output(VisionaryOutput, method="json_schema")
+    structured_llm = agent_structured_llm(
+        _agent_id, config, VisionaryOutput, temperature=0.7
+    )  # higher temp for creativity
 
     output = t.cast(
         VisionaryOutput,
@@ -134,3 +139,9 @@ def visionary_node(state: ThinkTankState) -> dict:
     )
 
     return {"expansions": [*existing_expansions, idea]}
+
+
+def visionary_node(state: ThinkTankState) -> dict:
+    """Instrumented wrapper: records latency for the whole agent node."""
+    with span("visionary", "node", round=state.get("current_round", 0)):
+        return _visionary_node_body(state)

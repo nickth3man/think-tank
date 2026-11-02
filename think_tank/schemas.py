@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -34,6 +36,44 @@ class ConvergenceVerdict(StrEnum):
 
     CONVERGED = "converged"
     DIVERGED = "diverged"
+
+
+def _flatten_dimension_value(raw: Any) -> str:
+    """Render one dimension's value as a single readable string."""
+    if isinstance(raw, str):
+        return raw
+    if isinstance(raw, dict):
+        return "; ".join(f"{k}: {v}" for k, v in raw.items() if v not in (None, ""))
+    if isinstance(raw, (list, tuple)):
+        return "; ".join(_flatten_dimension_value(item) for item in raw)
+    if raw is None:
+        return ""
+    return str(raw)
+
+
+def _stringify_dimensions(value: Any) -> Any:
+    """Coerce loosely-shaped dimension payloads into ``dict[str, str]``.
+
+    Models emit this field in several shapes: a flat string map, a nested
+    ``{"feasibility": {"rating": "high", ...}}`` map, or a JSON-encoded string
+    of either. All of them are flattened instead of failing the whole
+    structured call; anything else is dropped.
+    """
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+    if isinstance(value, (list, tuple)):
+        mapping: dict[Any, Any] = {}
+        for item in value:
+            if isinstance(item, (list, tuple)) and len(item) == 2:
+                key, raw = item
+                mapping[key] = raw
+        value = mapping
+    if not isinstance(value, dict):
+        return {}
+    return {str(key): _flatten_dimension_value(raw) for key, raw in value.items()}
 
 
 # ---------------------------------------------------------------------------
@@ -69,6 +109,8 @@ class Claim(BaseModel):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
     )
+
+    _coerce_dimensions = field_validator("dimensions", mode="before")(_stringify_dimensions)
 
 
 class Challenge(BaseModel):
@@ -256,6 +298,8 @@ class ResearcherOutput(BaseModel):
         min_length=5,
         description="Concise summary of evidence supporting this claim.",
     )
+
+    _coerce_dimensions = field_validator("dimensions", mode="before")(_stringify_dimensions)
 
 
 class SkepticOutput(BaseModel):

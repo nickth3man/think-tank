@@ -257,3 +257,100 @@ class TestEnums:
     def test_str_enum_equality(self) -> None:
         assert Confidence.LOW == "low"
         assert Stance.OPPOSE == "oppose"
+
+
+class TestDimensionCoercion:
+    """Smaller models emit loosely-shaped `dimensions`; they must not break the call."""
+
+    def test_nested_dict_is_flattened(self) -> None:
+        from think_tank.schemas import ResearcherOutput
+
+        out = ResearcherOutput.model_validate(
+            {
+                "content": "x" * 20,
+                "evidence_summary": "yyyyy",
+                "dimensions": {"feasibility": {"rating": "high", "rationale": "cheap"}},
+            }
+        )
+        assert out.dimensions == {"feasibility": "rating: high; rationale: cheap"}
+
+    def test_list_values_are_joined(self) -> None:
+        from think_tank.schemas import ResearcherOutput
+
+        out = ResearcherOutput.model_validate(
+            {
+                "content": "x" * 20,
+                "evidence_summary": "yyyyy",
+                "dimensions": {"risk": ["proximity bias", "cohesion erosion"]},
+            }
+        )
+        assert out.dimensions == {"risk": "proximity bias; cohesion erosion"}
+
+    def test_flat_strings_pass_through(self) -> None:
+        from think_tank.schemas import ResearcherOutput
+
+        out = ResearcherOutput.model_validate(
+            {
+                "content": "x" * 20,
+                "evidence_summary": "yyyyy",
+                "dimensions": {"feasibility": "high"},
+            }
+        )
+        assert out.dimensions == {"feasibility": "high"}
+
+    def test_claim_accepts_the_same_shapes(self) -> None:
+        from think_tank.schemas import Claim
+
+        claim = Claim.model_validate(
+            {
+                "agent_id": "researcher",
+                "round": 1,
+                "content": "x" * 20,
+                "dimensions": {"impact": {"rating": "high"}},
+            }
+        )
+        assert claim.dimensions == {"impact": "rating: high"}
+
+
+class TestDimensionStringParsing:
+    """A JSON-encoded `dimensions` string must be parsed, not rejected."""
+
+    def test_json_string_is_decoded(self) -> None:
+        from think_tank.schemas import ResearcherOutput
+
+        out = ResearcherOutput.model_validate(
+            {
+                "content": "x" * 20,
+                "evidence_summary": "yyyyy",
+                "dimensions": '{"feasibility": "high", "risk": {"rating": "low"}}',
+            }
+        )
+        assert out.dimensions == {"feasibility": "high", "risk": "rating: low"}
+
+    def test_unparseable_string_becomes_empty(self) -> None:
+        from think_tank.schemas import ResearcherOutput
+
+        out = ResearcherOutput.model_validate(
+            {"content": "x" * 20, "evidence_summary": "yyyyy", "dimensions": "not json"}
+        )
+        assert out.dimensions == {}
+
+    def test_non_mapping_value_becomes_empty(self) -> None:
+        from think_tank.schemas import ResearcherOutput
+
+        out = ResearcherOutput.model_validate(
+            {"content": "x" * 20, "evidence_summary": "yyyyy", "dimensions": 5}
+        )
+        assert out.dimensions == {}
+
+    def test_pairs_list_is_accepted(self) -> None:
+        from think_tank.schemas import ResearcherOutput
+
+        out = ResearcherOutput.model_validate(
+            {
+                "content": "x" * 20,
+                "evidence_summary": "yyyyy",
+                "dimensions": [["feasibility", "high"]],
+            }
+        )
+        assert out.dimensions == {"feasibility": "high"}

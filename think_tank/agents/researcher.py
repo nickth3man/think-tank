@@ -2,51 +2,25 @@
 
 from __future__ import annotations
 
-import os
 import typing as t
 
-from langchain_chroma import Chroma
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import OpenAIEmbeddings
-from langchain_openrouter import ChatOpenRouter
 
+from think_tank.kb import retrieve
+from think_tank.llm import agent_structured_llm, get_embeddings
 from think_tank.schemas import Claim, ResearcherOutput
 from think_tank.state import ThinkTankState
+from think_tank.telemetry import span
 
 _embedder = None
-_vector_store = None
-_llm = None
 
 
 def _get_embedder() -> OpenAIEmbeddings:
     global _embedder
     if _embedder is None:
-        _embedder = OpenAIEmbeddings(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=(lambda: os.getenv("OPENROUTER_API_KEY") or ""),
-            model=os.getenv("OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small"),
-            check_embedding_ctx_length=False,
-        )
+        _embedder = get_embeddings()
     return _embedder
-
-
-def _get_vector_store() -> Chroma:
-    global _vector_store
-    if _vector_store is None:
-        db_path = os.getenv("CHROMA_DB_PATH", "./chroma_db")
-        _vector_store = Chroma(
-            collection_name="think_tank_kb",
-            embedding_function=_get_embedder(),
-            persist_directory=db_path,
-        )
-    return _vector_store
-
-
-def _get_llm(model_name: str) -> ChatOpenRouter:
-    global _llm
-    if _llm is None or _llm.model_name != model_name:
-        _llm = ChatOpenRouter(model=model_name, temperature=0.2)
-    return _llm
 
 
 # ---------------------------------------------------------------------------
@@ -65,11 +39,14 @@ position you can construct.
 4. Acknowledge gaps or limitations in the available evidence honestly.
 
 ## Output Rules
-- `content`: A concise but substantive claim (≥ 50 words) backed by evidence.
-- `dimensions`: Assess at least 3 relevant aspects, e.g. \
-{"feasibility": "high", "risk": "moderate", "impact": "high", "evidence_strength": "strong"}.
+- `content`: Your claim, 50-90 words, backed by evidence.
+- `dimensions`: Exactly 3 aspects, each a short phrase (<= 12 words), e.g. \
+{"feasibility": "high", "risk": "moderate", "impact": "high"}.
 - `confidence`: Rate honestly — LOW if evidence is thin, HIGH only when well-supported.
-- `evidence_summary`: 1-3 sentence summary of the key evidence supporting your claim.
+- `evidence_summary`: One sentence (<= 30 words) on the key supporting evidence.
+
+## Brevity (tokens cost wall-clock)
+Completions are billed in latency: every extra 100 words costs ~0.5s. Write the minimum text that satisfies the rules above — no preamble, no restating the prompt, no meta-commentary, no bullet lists of everything you considered. Plain prose. Hit each length cap; never exceed it.
 """
 
 # ---------------------------------------------------------------------------
@@ -79,7 +56,7 @@ position you can construct.
 _agent_id = "researcher"
 
 
-def researcher_node(state: ThinkTankState) -> dict:
+def _researcher_node_body(state: ThinkTankState) -> dict:
     """
     LangGraph node: produces an evidence-grounded Claim.
 
@@ -98,6 +75,13 @@ def researcher_node(state: ThinkTankState) -> dict:
 
     # --- 1. Build deliberation context ---
     context_parts: list[str] = [f"## Topic\n{topic}"]
+
+    # Ground the claim in the knowledge base. Without this the Researcher has
+    # nothing but the topic and correctly refuses to make an evidential claim.
+    # The topic does not change between rounds, so the retrieval is stored in
+    # run state on the first round rather than re-queried every round.
+    evidence = state.get("evidence") or retrieve(topic, k=5)
+    context_parts.append("## Evidence Excerpts\n" + evidence)
 
     if current_round > 0:
         # Summarise prior claims for continuity
@@ -132,11 +116,7 @@ def researcher_node(state: ThinkTankState) -> dict:
     human_content = "\n\n".join(context_parts)
 
     # --- 3. LLM call with structured output ---
-    model_name = config.get(
-        "researcher_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini")
-    )
-    llm = _get_llm(model_name)
-    structured_llm = llm.with_structured_output(ResearcherOutput, method="json_schema")
+    structured_llm = agent_structured_llm(_agent_id, config, ResearcherOutput, temperature=0.2)
 
     output = t.cast(
         ResearcherOutput,
@@ -161,20 +141,10 @@ def researcher_node(state: ThinkTankState) -> dict:
         embedding=claim_embedding,
     )
 
-    return {"claims": [*existing_claims, claim]}
+    return {"evidence": evidence, "claims": [*existing_claims, claim]}
 
 
-# ---------------------------------------------------------------------------
-# Knowledge-base retrieval (Chroma + OpenAIEmbeddings)
-# ---------------------------------------------------------------------------
-
-
-def _query_knowledge_base(topic: str, state: ThinkTankState) -> str:
-    """
-    Retrieve relevant documents from the Chroma vector store.
-    """
-    vector_store = _get_vector_store()
-    results = vector_store.similarity_search(topic, k=5)
-    if not results:
-        return f"No pre-indexed documents found for: {topic!r}."
-    return "\n".join(doc.page_content for doc in results)
+def researcher_node(state: ThinkTankState) -> dict:
+    """Instrumented wrapper: records latency for the whole agent node."""
+    with span("researcher", "node", round=state.get("current_round", 0)):
+        return _researcher_node_body(state)

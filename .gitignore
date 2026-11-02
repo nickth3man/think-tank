@@ -8,9 +8,32 @@ wheels/
 
 # Virtual environments
 .venv
+.nox/
 
 # Chroma persistent DB
 chroma_db/
 
 # Environment variables
 .env
+
+# Test and coverage artifacts
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.hypothesis/
+.mutmut-cache
+
+# Tool logs
+*.log
+
+# Tool caches
+.ruff_cache/
+.mypy_cache/
+.ty_cache/
+
+# macOS
+.DS_Store
+
+# Local run state
+.sisyphus/

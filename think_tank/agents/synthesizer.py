@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import os
 import typing as t
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openrouter import ChatOpenRouter
 
+from think_tank.llm import agent_structured_llm
 from think_tank.schemas import (
     Challenge,
     Claim,
@@ -16,6 +15,7 @@ from think_tank.schemas import (
     SynthesizerOutput,
 )
 from think_tank.state import ThinkTankState
+from think_tank.telemetry import span
 
 # ---------------------------------------------------------------------------
 # System Prompt
@@ -42,12 +42,17 @@ competing perspectives into a coherent whole and resolve contradictions.
 lower risk, or higher leverage.
 
 ## Output Rules
-- `content`: Your merged perspective (≥ 80 words). This should be the most useful, \
-actionable output of the round — something a decision-maker could actually use.
+- `content`: Your merged perspective, 80-130 words — the most useful, actionable \
+output of the round, something a decision-maker could actually use.
 - `incorporated_claim_ids`: IDs of every claim you drew from.
-- `resolved_tensions`: List the specific contradictions you resolved and how.
-- `remaining_tensions`: List contradictions you could not resolve and why.
+- `resolved_tensions`: The contradictions you resolved and how — one short \
+sentence each, max 3 entries.
+- `remaining_tensions`: Contradictions you could not resolve and why — one short \
+sentence each, max 3 entries.
 - `confidence`: Your confidence in this synthesis overall.
+
+## Brevity (tokens cost wall-clock)
+Completions are billed in latency: every extra 100 words costs ~0.5s. Write the minimum text that satisfies the rules above — no preamble, no restating the prompt, no meta-commentary, no bullet lists of everything you considered. Plain prose. Hit each length cap; never exceed it.
 
 ## Quality bar
 - A good synthesis doesn't just average opinions — it finds the *right* integration.
@@ -61,8 +66,16 @@ actionable output of the round — something a decision-maker could actually use
 
 _agent_id = "synthesizer"
 
+#: Per-artefact character cap when rendering deliberation context.
+CONTENT_CHARS = 400
 
-def synthesizer_node(state: ThinkTankState) -> dict:
+
+def _short_dimensions(dimensions: dict[str, str]) -> str:
+    """Compact one-line rendering of a claim's dimensions."""
+    return ", ".join(f"{k}={v[:40]}" for k, v in list(dimensions.items())[:4])
+
+
+def _synthesizer_node_body(state: ThinkTankState) -> dict:
     """
     LangGraph node: produces a SynthesisAttempt merging all round contributions.
 
@@ -89,24 +102,24 @@ def synthesizer_node(state: ThinkTankState) -> dict:
 
     if current_claims:
         claim_lines = [
-            f"- [{c.agent_id}] (ID: {c.id}, confidence: {c.confidence.value})\n"
-            f"  Dimensions: {c.dimensions}\n"
-            f"  {c.content}"
+            f"- [{c.agent_id}] (ID: {c.id}, {c.confidence.value})\n"
+            f"  Dimensions: {_short_dimensions(c.dimensions)}\n"
+            f"  {c.content[:CONTENT_CHARS]}"
             for c in current_claims
         ]
         context_parts.append("## Claims This Round\n" + "\n".join(claim_lines))
 
     if current_challenges:
         challenge_lines = [
-            f"- [{ch.agent_id} -> claim {ch.target_claim_id[:8]}..., {ch.stance.value}]\n"
-            f"  {ch.content}"
+            f"- [{ch.agent_id} -> {ch.target_claim_id[:8]}, {ch.stance.value}] "
+            f"{ch.content[:CONTENT_CHARS]}"
             for ch in current_challenges
         ]
         context_parts.append("## Challenges This Round\n" + "\n".join(challenge_lines))
 
     if current_expansions:
         expansion_lines = [
-            f"- (ID: {e.id}) {e.content}\n  Novelty: {e.novelty_rationale[:200]}"
+            f"- (ID: {e.id}) {e.content[:CONTENT_CHARS]} | novelty: {e.novelty_rationale[:120]}"
             for e in current_expansions
         ]
         context_parts.append("## Lateral Ideas This Round\n" + "\n".join(expansion_lines))
@@ -123,7 +136,7 @@ def synthesizer_node(state: ThinkTankState) -> dict:
     if my_prior:
         latest = my_prior[-1]
         context_parts.append(
-            f"## Your Prior Synthesis (round {latest.round})\n{latest.content[:300]}"
+            f"## Your Prior Synthesis (round {latest.round})\n{latest.content[:200]}"
         )
         if latest.remaining_tensions:
             context_parts.append(
@@ -139,11 +152,7 @@ def synthesizer_node(state: ThinkTankState) -> dict:
     human_content = "\n\n".join(context_parts)
 
     # --- 2. LLM call with structured output ---
-    model_name = config.get(
-        "synthesizer_model", os.getenv("DEFAULT_CHAT_MODEL", "openai/gpt-4o-mini")
-    )
-    llm = ChatOpenRouter(model=model_name, temperature=0.2)
-    structured_llm = llm.with_structured_output(SynthesizerOutput, method="json_schema")
+    structured_llm = agent_structured_llm(_agent_id, config, SynthesizerOutput, temperature=0.2)
 
     output = t.cast(
         SynthesizerOutput,
@@ -167,3 +176,9 @@ def synthesizer_node(state: ThinkTankState) -> dict:
     )
 
     return {"syntheses": [*existing_syntheses, attempt]}
+
+
+def synthesizer_node(state: ThinkTankState) -> dict:
+    """Instrumented wrapper: records latency for the whole agent node."""
+    with span("synthesizer", "node", round=state.get("current_round", 0)):
+        return _synthesizer_node_body(state)
