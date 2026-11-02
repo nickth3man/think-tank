@@ -202,3 +202,17 @@ control axis >= 0.85; the images axis applies (control carries `IMG:`).
   0.85, 0.76, 0.85] (images -0.05, at the allowance, not over it), lab [0.80, 0.89,
   0.76, 0.28 n/a, 0.79 — lab's title-page geometry is unchanged since gen 7, so the
   0.85->0.79 move is transcript noise on an identical render].
+
+- **Re-verification (goal audit, no new generation)** — the artifact is byte-stable since
+  gen 10: `git diff HEAD -- tools/deckgen ui/deckgen` is empty at `7ab0a62`, and two fresh
+  renders of `ui/deckgen/think-tank.md` are byte-identical (`cmp` clean), so no axis can
+  have regressed — a deterministic renderer cannot move an unchanged spec. Fresh grade with
+  a newly written per-page transcript + measured type inventory (body 18 pt from
+  DECKGEN_VERBOSE; display 96/76/40/34/32; supporting 24/15/14/11; one body size):
+  [space 0.88, body 0.84, variety 0.82, images 0.89, title 0.85] — every axis >= 0.80.
+  The body 0.84 vs gen 10's 0.91 delta sits on an identical render and is transcript noise
+  (same class as the lab title 0.85->0.79 note above; the ±0.02 floor governs identical
+  transcripts, and this transcript is new). Mechanical evidence at this commit: cargo test
+  14/14, `check_deck.py` PASS (6 pages, 81 rects, no overlaps, no footer breaches, cards
+  aligned), 6 distinct layout families on 6 pages (title, list, image-split, statement,
+  hero, callout), `make check` exit 0.
