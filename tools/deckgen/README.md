@@ -15,7 +15,8 @@ cargo run --release --manifest-path tools/deckgen/Cargo.toml -- deck.md -o deck.
 `--layout` dumps every painted rect (kind, label, x/y/w/h) per page from the same paint
 calls that produce the PDF, so `check_deck.py` verifies geometry by rectangle math rather
 than pixel heuristics: safe-area bounds, footer-rule breaches, overlapping content rects,
-text intruding into stat cards, and card baseline alignment. Exit 1 on any failure.
+text intruding into stat cards, and card baseline alignment. Exit 1 on any failure. The PDF's page count must equal the layout's page count, so a
+truncated or stale render fails even when its geometry is clean.
 
 Spec (`src/spec.rs`): slides separated by a line of `---`; first block is the title slide.
 Blank blocks (e.g. a trailing `---`) are skipped. Per slide: `# Title`, `KICKER: text`, `SUBTITLE: text`, `META: text` (title-slide bottom anchor),
@@ -50,15 +51,22 @@ Layout families (chosen per slide from content):
   result; pass two paints that size everywhere. `DECKGEN_VERBOSE=1` prints the chosen value.
   A slide that cannot hold it steps down rather than overflowing, and a test asserts that
   crowding one slide shrinks the whole deck.
-- **Cards close the composition.** The card row hangs 26 pt under the last line of copy and
-  falls back to the anchored band only when the copy already reaches it. A lone stat on a
-  slide with an image becomes one full-width band with its value left and label right,
-  instead of a chip beside a void.
+- **Cards close the composition.** Cards share the content width equally, so two cards are
+  half the width each and four a quarter: the row spans the page rather than leaving a void
+  beside it. The row hangs 26 pt under the last line of copy and falls back to the anchored
+  band when the copy already reaches it. A lone stat with an image becomes one full-width
+  band (value left, label right) on the shared closing line, and the statement family closes
+  with one full-width band divided by hairlines instead of a card row.
 - **The hero claim column clears the card row.** It compresses its gaps, then steps the body
   size down 1 pt at a time, so a crowded hero never overprints the cards.
 
 `TAG: text` (control pill) and `BADGE: text | tone` (tone: `accent` default, `beta`, `bad`,
 `neutral`) anchor to the top-right; on the title slide they stack as a pill over a badge.
+
+Loop documents are checked separately by `scripts/check_docs.py`: the frozen grading
+instrument (`GRADE.md`) is single-sourced, every path the documents name resolves, and the
+numbers they share agree. Exit 1 on drift; `scripts/test_check_docs.py` proves each check
+still fails on a mutated input.
 
 Example: `ui/deckgen/think-tank.md`.
 
