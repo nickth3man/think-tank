@@ -1,6 +1,8 @@
 # Think Tank
 
-Multi-agent deliberation system written in Rust. Four specialised agents collaborate through structured rounds of debate, converging on a synthesised answer.
+Multi-agent deliberation system written in Rust. Four specialised agents debate a
+topic in structured rounds, and an Arbiter measures whether their position has
+stabilised — repeating rounds until it has, then emitting a synthesis.
 
 ## Architecture
 
@@ -19,16 +21,35 @@ START → Researcher → Skeptic → Visionary → Synthesizer → Arbiter
 | **Synthesizer** | Merges perspectives, resolves contradictions |
 | **Arbiter** | Measures alignment, decides convergence or another round |
 
+The Arbiter makes no LLM calls. Its score is `0.80 × semantic + 0.20 × (1 − opposition ratio)`,
+where semantic alignment compares this round's claim embedding against previous
+rounds' — it measures whether the position has stabilised, which is what
+convergence means here. On convergence the final synthesis reuses the
+Synthesizer's own attempt for that round.
+
+This is a CLI application. There is no web UI or HTTP server.
+
+## Requirements
+
+- A Rust toolchain (stable; the crate is edition 2021, tested on 1.99)
+- Credentials for one chat provider and one embeddings provider
+
 ## Quick Start
 
 ```bash
-cargo build --release --manifest-path rust/Cargo.toml
+git clone https://github.com/nickth3man/think-tank.git
+cd think-tank
+
 cargo run --release --manifest-path rust/Cargo.toml -- "Should companies adopt fully remote work?"
 ```
 
 `make run TOPIC="Should companies adopt fully remote work?"` is the same thing.
 The topic is passed through quoted, so `?`, `*` and multi-word text survive the
 shell; with no `TOPIC` the CLI prompts for one.
+
+A run prints each round's claims, challenges, lateral ideas and synthesis
+attempts as it goes, then a final synthesis. With `THINK_TANK_PROFILE=1` it also
+prints a latency profile at exit.
 
 ## Prerequisites
 
@@ -39,6 +60,9 @@ Credentials come from your shell environment — the app does not read `.env`.
 ```bash
 cat .env.example >> ~/.zshenv   # then uncomment the keys you have
 ```
+
+If a required key is missing the CLI exits non-zero and names the exact
+variables it needed, rather than failing mid-run.
 
 Providers speak the OpenAI chat-completions protocol, so switching is a matter
 of exporting a different key and setting `THINK_TANK_PROVIDER`:
@@ -52,8 +76,8 @@ of exporting a different key and setting `THINK_TANK_PROVIDER`:
 | `openrouter` | `OPENROUTER_API_KEY` | ❌ | ✅ | — |
 
 OpenRouter is deliberately **not** a chat provider: it is reserved for
-embeddings and judge/decision models. Requesting it for agent chat raises an
-error instead of silently routing there.
+embeddings. Requesting it for agent chat returns an error instead of silently
+routing there.
 
 Chat and embeddings are selected independently: `THINK_TANK_PROVIDER` drives
 chat, `THINK_TANK_EMBEDDING_PROVIDER` drives retrieval (default `openrouter`).
@@ -95,22 +119,30 @@ rust/
 ## Development
 
 ```bash
-make build         # cargo build
-make test          # cargo test (stub-server integration + golden parity)
-make fmt           # rustfmt
-make fmt-check     # formatting check
-make lint          # clippy, warnings denied
-make check         # fmt-check + clippy + test — what CI runs
+make build            # cargo build
+make test             # cargo test (stub-server integration + golden parity)
+make fmt              # rustfmt
+make fmt-check        # formatting check
+make lint             # clippy, warnings denied
+make check            # fmt-check + clippy + test — what CI runs
 make run TOPIC="..."  # release build, then run the CLI on that topic
+make clean            # remove build artifacts and the local knowledge base
 ```
 
-Tests never touch the network. A local stub server speaks the OpenAI protocol,
-so the loop, the arbiter formula and the golden-fixture replay all run
-deterministically without credentials.
+### Tests
+
+Tests never touch the network and need no credentials. A local stub server
+speaks the OpenAI protocol, so the full loop runs deterministically: node
+ordering, whole-state extension, the arbiter formula and both convergence paths
+are all asserted against scripted model output.
 
 `rust/fixtures/python_golden.json` was recorded from the Python implementation
-this crate replaced. Replaying it is what pins behavioural parity; the recorder
-script beside it is kept for provenance only and cannot run.
+this crate replaced. Replaying it is what pins behavioural parity — identical
+claim/challenge/synthesis serialization, identical arbiter scores, and identical
+CLI rendering. The recorder script beside it is kept for provenance only and
+cannot run, since it imports the deleted package.
+
+CI runs `fmt`, `clippy -D warnings` and the test suite on Linux and macOS.
 
 ## Tooling
 
@@ -121,6 +153,8 @@ script beside it is kept for provenance only and cannot run.
 | [clippy](https://github.com/rust-lang/rust-clippy) | Lints (denied in CI) |
 | [serde](https://serde.rs) | Serialization, including Python-compatible timestamps |
 | [ureq](https://github.com/algesten/ureq) | Blocking HTTP client for the OpenAI protocol |
+| [chrono](https://github.com/chronotope/chrono) | UTC timestamps |
+| [uuid](https://github.com/uuid-rs/uuid) | Artefact identifiers |
 
 ## Configuration
 
@@ -139,7 +173,21 @@ Key environment variables (see `.env.example`):
 | `THINK_TANK_PROFILE` | unset | `1` prints a per-stage latency profile at exit |
 | `THINK_TANK_KB_PATH` | `./kb_store` | Knowledge-base directory (one JSON collection per embedding space) |
 
-Convergence parameters are passed at runtime in the state `config` dict:
+Per-agent overrides follow config → `THINK_TANK_<AGENT>_*` → global env →
+provider default. A global `THINK_TANK_CHAT_MODEL` is *not* applied to an agent
+whose provider was overridden, since that would name a model the other endpoint
+does not serve.
+
+### Knowledge base
+
+The store is one JSON collection per embedding space under `THINK_TANK_KB_PATH`,
+seeded with eight dummy remote-work documents when empty and queried by cosine
+similarity (top 5). The legacy `chroma_db/` directory from the previous
+implementation is not read.
+
+### Convergence parameters
+
+Passed at runtime in the state `config` map:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -147,18 +195,18 @@ Convergence parameters are passed at runtime in the state `config` dict:
 | `min_rounds` | `2` | Minimum deliberation rounds |
 | `max_rounds` | `6` | Hard ceiling — forces synthesis |
 
-The alignment score is `0.80 × semantic + 0.20 × (1 − opposition ratio)`.
-Semantic alignment compares this round's claim against the previous round's, so
-it measures whether the position has stabilised. `Challenge.resolved` is never
-set by any producer in this codebase, so the resolution rate is recorded on the
-`arbiter.score` span but is not weighted — including it capped the score at a
-constant `0.75` and made every run converge on the same number. Consequently
-`Synthesis.unresolved_challenges` currently lists every challenge as unresolved.
+`Challenge.resolved` is never set by any producer, so the resolution rate is
+recorded on the `arbiter.score` span but not weighted — including it capped the
+score at a constant `0.75` and made every run converge on the same number.
+Consequently `Synthesis.unresolved_challenges` currently lists every challenge
+as unresolved.
 
 ### Profiling
 
 `THINK_TANK_PROFILE=1` records a span for every graph node, LLM call, embedding
 request and vector-store query, then prints exclusive time per kind plus the
-slowest spans. Every span is tagged with the run that produced it, so the CLI scopes its own report to the run it just executed. Output tokens dominate: latency tracks output length divided by
-provider throughput (~200 tok/s), so prompt brevity is the main lever, not
-parallelism.
+slowest spans. Every span is tagged with the run that produced it, so the CLI
+reports only the run it just executed.
+
+Output tokens dominate: latency tracks output length divided by provider
+throughput (~200 tok/s), so prompt brevity is the main lever, not parallelism.

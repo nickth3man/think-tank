@@ -9,7 +9,7 @@
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::sync::{LazyLock, Mutex, MutexGuard};
 
 use serde_json::{json, Value};
 
@@ -59,8 +59,8 @@ pub struct StubState {
 }
 
 fn state() -> &'static Mutex<StubState> {
-    static STATE: OnceLock<Mutex<StubState>> = OnceLock::new();
-    STATE.get_or_init(|| Mutex::new(StubState::default()))
+    static STATE: LazyLock<Mutex<StubState>> = LazyLock::new(|| Mutex::new(StubState::default()));
+    &STATE
 }
 
 /// Serialises tests that share the process-global stub and environment.
@@ -69,11 +69,8 @@ fn state() -> &'static Mutex<StubState> {
 /// server thread needs the state mutex while a test is running, so holding it
 /// for the test body would deadlock every request.
 pub fn lock() -> MutexGuard<'static, ()> {
-    static SERIAL: OnceLock<Mutex<()>> = OnceLock::new();
-    SERIAL
-        .get_or_init(|| Mutex::new(()))
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
+    static SERIAL: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+    SERIAL.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 // ---------------------------------------------------------------------------

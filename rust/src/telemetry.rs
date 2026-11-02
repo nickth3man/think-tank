@@ -6,7 +6,7 @@
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 use std::time::Instant;
 
 thread_local! {
@@ -260,17 +260,12 @@ impl Recorder {
     }
 }
 
-static RECORDER: Mutex<Option<&'static Recorder>> = Mutex::new(None);
+/// The process-wide recorder, constructed once on first use.
+static RECORDER: LazyLock<Recorder> = LazyLock::new(Recorder::default);
 
 /// The process-wide recorder.
 pub fn recorder() -> &'static Recorder {
-    let mut slot = RECORDER.lock().expect("recorder slot");
-    if let Some(existing) = *slot {
-        return existing;
-    }
-    let boxed: &'static Recorder = Box::leak(Box::new(Recorder::default()));
-    *slot = Some(boxed);
-    boxed
+    &RECORDER
 }
 
 /// Record a span around `f`; a no-op unless profiling is enabled.
