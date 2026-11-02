@@ -27,7 +27,10 @@ rounds' — it measures whether the position has stabilised, which is what
 convergence means here. On convergence the final synthesis reuses the
 Synthesizer's own attempt for that round.
 
-This is a CLI application. There is no web UI or HTTP server.
+This is a CLI application. The FastAPI observability dashboard, its `/observe`
+websocket and `/profile` route that the previous implementation shipped were
+**removed** in the rewrite; the CLI prints its own per-round state and latency
+profile instead.
 
 ## Requirements
 
@@ -131,18 +134,22 @@ make clean            # remove build artifacts and the local knowledge base
 
 ### Tests
 
-Tests never touch the network and need no credentials. A local stub server
-speaks the OpenAI protocol, so the full loop runs deterministically: node
-ordering, whole-state extension, the arbiter formula and both convergence paths
-are all asserted against scripted model output.
+`make check` runs the same three gates CI does: `cargo fmt --check`,
+`cargo clippy --all-targets -- -D warnings`, then `cargo test`. Tests never
+touch the network and need no credentials.
+
+| File | Covers |
+|------|--------|
+| `tests/gate1.rs` | The real loop against the stub server: node ordering within a round, whole-state extension (no reducers), the `0.80/0.20` arbiter formula, `min_rounds`/`max_rounds` routing, and the CLI exiting 0 |
+| `tests/parity.rs` | Golden-fixture replay: identical claim/challenge/synthesis serialization, identical arbiter scores, identical per-round CLI rendering |
+| `tests/rules.rs` | Provider and model precedence, credential reporting, structured-output retry, and dimension coercion |
 
 `rust/fixtures/python_golden.json` was recorded from the Python implementation
-this crate replaced. Replaying it is what pins behavioural parity — identical
-claim/challenge/synthesis serialization, identical arbiter scores, and identical
-CLI rendering. The recorder script beside it is kept for provenance only and
-cannot run, since it imports the deleted package.
+this crate replaced. Replaying it is what pins behavioural parity. The recorder
+script beside it is kept for provenance only and cannot run, since it imports
+the deleted package.
 
-CI runs `fmt`, `clippy -D warnings` and the test suite on Linux and macOS.
+CI runs the three gates on Linux and macOS.
 
 ## Tooling
 
@@ -187,7 +194,11 @@ implementation is not read.
 
 ### Convergence parameters
 
-Passed at runtime in the state `config` map:
+These are fixed defaults in `runner` (`DEFAULT_ALIGNMENT_THRESHOLD`,
+`DEFAULT_MIN_ROUNDS`, `DEFAULT_MAX_ROUNDS`). `initial_state` accepts a `Config`
+overriding any of them, but **the CLI does not expose that** — `main.rs` passes
+`None`, so a CLI run always uses the defaults below. Only the tests override
+them, to drive the forced-synthesis path.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -205,8 +216,8 @@ as unresolved.
 
 `THINK_TANK_PROFILE=1` records a span for every graph node, LLM call, embedding
 request and vector-store query, then prints exclusive time per kind plus the
-slowest spans. Every span is tagged with the run that produced it, so the CLI
-reports only the run it just executed.
+slowest spans at exit. Each span is tagged with the run that produced it, so the
+report covers only the run that just finished.
 
 Output tokens dominate: latency tracks output length divided by provider
 throughput (~200 tok/s), so prompt brevity is the main lever, not parallelism.
