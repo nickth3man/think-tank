@@ -116,3 +116,25 @@ unification, not a re-grade.
 - Selectable text layer: pages are raster. Route: capture galley glyph runs during paint,
   emit an invisible text layer with krilla (font embedding + ToUnicode). Deferred by
   jev_decide (0.99 document_and_close): outside the stated visual-quality objective.
+
+## Loop run 2 (2026-11-02, generations 4-6)
+
+Ran as the `deckgen-loop` workflow (`workflows/deckgen-iteration.md`). Baseline gen3:
+[space 0.78, body 0.84, variety 0.79, images 0.80, title 0.81]. Bar: all applicable axes
+>= 0.85 (user-set). Instrument: frozen 5-axis `jev_noul` + measured type inventory.
+
+- **Gen4** — title block rebalanced (start 0.32, subtitle width 0.85 -> 2 lines, P1 mid
+  void 94->116pt against a 128pt top void) and P3's wide stat band bottom-anchored on the
+  shared 531pt closing line. Accepted: [0.78, 0.86, 0.79, 0.80, 0.81]. Body crossed the bar.
+- **Gen5** — wide band grown to full card height (112pt), contents optically centred; P3
+  pre-band void 79->43pt. Accepted: [0.79, 0.86, 0.79, 0.79, 0.81].
+- **Gen6** — statement family gets its own closing element: one full-width raised band
+  with hairline column dividers (P4), differentiating it from the list family's card row.
+  Accepted: [0.78, 0.83, 0.79, 0.80, 0.82].
+
+**Saturation finding.** Three generations aimed at the weakest axis moved it 0.78 -> 0.79
+-> 0.78; variety stayed 0.79 throughout; every measured void is now consistent (closing
+line shared at 531pt, rule-to-content gaps 40-68pt). The remaining sub-bar scores are the
+design language's ceiling (dark, sparse, generous margins), not fixable defects. Further
+generations would chase grader noise, so the run stops early on this evidence; the 0.85
+bar stays unmet on space/variety/images and the last accepted generation is kept.

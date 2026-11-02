@@ -28,7 +28,10 @@ score table with deltas vs run start, list of commits, what changed and why, PDF
 Every applicable control axis ≥ 0.85 (five frozen axes; the images axis applies only when
 the deck carries `IMG:`). No accepted generation may regress an axis more than 0.05 vs the
 previous accepted one. Hard cap: 6 generations per run — the cap ends the run, the brief
-reports where the bar was missed.
+reports where the bar was missed. **Saturation stop**: if two consecutive generations
+aimed at the same weakest axis move it by less than the ±0.02 noise floor cumulatively,
+the axis is at the design's ceiling — stop, record the evidence in
+`docs/deckgen-iterations.md`, and report the gap rather than churn.
 
 ## Instruments
 

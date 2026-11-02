@@ -452,7 +452,7 @@ fn paint_title(p: &egui::Painter, ctx: &Context, s: &Slide) {
         0.0,
         ACCENT,
     );
-    let mut y = PAGE.y * 0.30;
+    let mut y = PAGE.y * 0.32;
     // Right corner stack: the control pill first, the status badge under it.
     let mut stack_bottom: Option<f32> = None;
     if let Some(tag) = &s.tag {
@@ -491,7 +491,7 @@ fn paint_title(p: &egui::Painter, ctx: &Context, s: &Slide) {
         y += h + 24.0;
     }
     if let Some(sub) = &s.subtitle {
-        let g = text_galley(ctx, sub, inter(24.0), MUTED, CONTENT_W * 0.72, 34.0);
+        let g = text_galley(ctx, sub, inter(24.0), MUTED, CONTENT_W * 0.85, 34.0);
         paint_text(p, Pos2::new(MARGIN, y), g, "subtitle", sub);
     }
     // Anchor the bottom: deck meta just above the footer rule.
@@ -930,7 +930,8 @@ fn paint_content(
             }
             yy += vg[i] + 26.0;
         }
-        paint_stats(p, ctx, s, img.is_some(), Some(yy + 28.0));
+        // The statement family closes with a banded row, not a card row.
+        paint_stats_inner(p, ctx, s, img.is_some(), Some(yy + 28.0), true);
         return;
     }
     // List path: paragraphs and bullets in one flow, deck-wide fitted size.
@@ -1031,16 +1032,63 @@ fn paint_content(
 /// Stat cards: big display numbers with mono labels, on wash panels,
 /// anchored above the footer (right-aligned under the image column).
 fn paint_stats(p: &egui::Painter, ctx: &Context, s: &Slide, has_img: bool, want_top: Option<f32>) {
+    paint_stats_inner(p, ctx, s, has_img, want_top, false)
+}
+
+/// `banded` renders the row as one raised panel with hairline column dividers (the
+/// statement family's closing element); the default renders separate cards.
+fn paint_stats_inner(
+    p: &egui::Painter,
+    ctx: &Context,
+    s: &Slide,
+    has_img: bool,
+    want_top: Option<f32>,
+    banded: bool,
+) {
     if !s.stats.is_empty() {
         // A slide whose text ended early hangs its card row right under the copy; the
         // band stays anchored when the copy already reaches it (never below the footer).
         let anchored = PAGE.y - 40.0 - 24.0 - 112.0;
-        let y = want_top.map_or(anchored, |t| t.min(anchored));
+        // The wide closing band always sits on the shared closing line (bottom 531 like
+        // every card row); ordinary cards may hang under the copy instead.
+        let y = want_top.map_or(anchored, |t| {
+            if s.stats.len() == 1 && has_img {
+                anchored // the wide band closes the page on the shared line
+            } else {
+                t.min(anchored)
+            }
+        });
         let cols = s.stats.len().min(4);
         let gap = 14.0;
         // The row always spans the full content width: two cards are half the width each,
         // not two small cards plus a void; one card is the full-width band.
         let w = (CONTENT_W - gap * (cols - 1) as f32) / cols as f32;
+        if banded {
+            let panel = Rect::from_min_size(Pos2::new(MARGIN, y), vec2(CONTENT_W, 112.0));
+            p.rect_filled(panel, RADIUS, CONTROLS);
+            p.rect_stroke(panel, RADIUS, hairline(), egui::StrokeKind::Inside);
+            p.hline(
+                (panel.left() + 1.0)..=(panel.right() - 1.0),
+                panel.top() + 0.5,
+                Stroke::new(1.0, fade(LINE_STRONG, 0.55)),
+            );
+            let colw = CONTENT_W / cols as f32;
+            for (i, stat) in s.stats.iter().take(4).enumerate() {
+                let cx = MARGIN + colw * i as f32;
+                if i > 0 {
+                    p.vline(
+                        cx,
+                        panel.top() + 14.0..=panel.bottom() - 14.0,
+                        Stroke::new(1.0, fade(LINE, 1.0)),
+                    );
+                }
+                let vg = text_galley(ctx, &stat.value, display(34.0), ACCENT_400, colw - 32.0, 38.0);
+                paint_text(p, Pos2::new(cx + 16.0, y + 22.0), vg, "card-value", &stat.value);
+                let lg = hud_galley(ctx, &stat.label, MUTED, 0.10);
+                paint_text(p, Pos2::new(cx + 16.0, y + 76.0), lg, "card-label", &stat.label);
+            }
+            return;
+        }
         for (i, stat) in s.stats.iter().take(4).enumerate() {
             let row_w = w * cols as f32 + gap * (cols - 1) as f32;
             // With an image column the cards sit under the text, not under the image:
@@ -1053,9 +1101,10 @@ fn paint_stats(p: &egui::Painter, ctx: &Context, s: &Slide, has_img: bool, want_
             // closing band under both columns instead of a chip with a void beside it.
             // A lone stat on a wide slide becomes one horizontal band: the number and its
             // label share the row, so the card has a value at both ends instead of a void.
+            // Full card height, so it closes the page on the same rhythm as a card row.
             let wide = s.stats.len() == 1 && has_img;
             let card_w = if wide { CONTENT_W } else { w };
-            let card_h = if wide { 76.0 } else { 112.0 };
+            let card_h = 112.0;
             let _ = row_w;
             let x = x0 + (w + gap) * i as f32;
             let panel = Rect::from_min_size(Pos2::new(x, y), vec2(card_w, card_h));
