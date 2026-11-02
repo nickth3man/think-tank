@@ -446,13 +446,34 @@ fn paint_slide(
 }
 
 fn paint_title(p: &egui::Painter, ctx: &Context, s: &Slide) {
+    // Centre the block in the space above the meta anchor so the empty areas above
+    // and below it are equal: balanced whitespace reads as intentional
+    // (verdanabold.com/post/presentation-design-101,
+    //  brightcarbon.com/blog/presentation-whitespace).
+    let dash_gap = 48.0; // accent bar sits this far above the kicker
+    let mut block_h = dash_gap;
+    if s.kicker.is_some() {
+        block_h += HUD_SIZE + 22.0;
+    }
+    if let Some(t) = &s.title {
+        block_h += text_galley(ctx, t, display(76.0), INK_STRONG, CONTENT_W, 84.0)
+            .size()
+            .y
+            + 24.0;
+    }
+    if let Some(sub) = &s.subtitle {
+        block_h += text_galley(ctx, sub, inter(24.0), MUTED, CONTENT_W * 0.85, 34.0)
+            .size()
+            .y;
+    }
+    let region_bottom = if s.meta.is_some() { PAGE.y - 80.0 } else { PAGE.y - 60.0 };
+    let mut y = (((region_bottom - block_h) / 2.0) + dash_gap).max(MARGIN);
     // Accent bar.
     p.rect_filled(
-        Rect::from_min_size(Pos2::new(MARGIN, PAGE.y * 0.30 - 36.0), vec2(48.0, 4.0)),
+        Rect::from_min_size(Pos2::new(MARGIN, y - dash_gap), vec2(48.0, 4.0)),
         0.0,
         ACCENT,
     );
-    let mut y = PAGE.y * 0.32;
     // Right corner stack: the control pill first, the status badge under it.
     let mut stack_bottom: Option<f32> = None;
     if let Some(tag) = &s.tag {
@@ -1220,6 +1241,29 @@ mod tests {
                 card_top
             );
         }
+    }
+
+    /// The title block is centred in the space above the meta anchor: the void above
+    /// the accent bar equals the void between the subtitle and the meta line, so the
+    /// empty areas read as distributed, not accidental.
+    #[test]
+    fn title_block_is_centred_above_the_meta() {
+        let deck = spec::parse(
+            "# Deck\nKICKER: K\nSUBTITLE: A subtitle that wraps onto a second line for good measure\nMETA: META\n---\n# Slide\n- one\n",
+            std::path::Path::new("."),
+        );
+        render_deck(&deck);
+        let lay = layout();
+        let page = &lay[0];
+        let kicker = page.iter().find(|i| i.kind == "kicker").unwrap();
+        let subtitle = page.iter().find(|i| i.kind == "subtitle").unwrap();
+        let meta = page.iter().find(|i| i.kind == "meta").unwrap();
+        let above = kicker.y - 48.0; // the accent bar sits 48 pt above the kicker
+        let below = meta.y - (subtitle.y + subtitle.h);
+        assert!(
+            (above - below).abs() < 1.0,
+            "void above the block {above:.1} != void below it {below:.1}"
+        );
     }
 
     /// The divider must record a rule that spans only the text column on an image slide,

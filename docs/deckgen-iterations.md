@@ -138,3 +138,26 @@ line shared at 531pt, rule-to-content gaps 40-68pt). The remaining sub-bar score
 design language's ceiling (dark, sparse, generous margins), not fixable defects. Further
 generations would chase grader noise, so the run stops early on this evidence; the 0.85
 bar stays unmet on space/variety/images and the last accepted generation is kept.
+
+## Loop run 3 (2026-11-02, `/deckgen-loop 10` -> budget 10 generations)
+
+Baseline gates: all three decks PASS before grading (control 79 rects, think-tank 81,
+lab 51). Run-start control grade: [space 0.51, body 0.80, variety 0.80, images 0.75,
+title 0.45]. Regression-deck starts: think-tank [0.56, 0.88, 0.82, 0.58, 0.47],
+lab [0.58, 0.88, 0.74, 0.26 (no IMG:, not applicable), 0.52]. Bar: every applicable
+control axis >= 0.85; the images axis applies (control carries `IMG:`).
+
+- **Gen 7 (accepted)** — aimed at title 0.45, the weakest axis. Fix: `paint_title`
+  (`tools/deckgen/src/page.rs`) now measures the title block (accent dash + kicker +
+  title + subtitle) and centres it in the region above the meta anchor, so the void
+  above the dash equals the void below the subtitle. Measured on the render: title
+  block voids 190pt top / 116pt middle -> 129pt / 129pt (kicker y190->177, accent dash
+  y142->129, subtitle bottom y399->386, meta anchored at y515). Rule source: balanced
+  whitespace composition — verdanabold.com/post/presentation-design-101 (top of 7
+  candidates via jev_rerank), brightcarbon.com/blog/presentation-whitespace.
+  New behavioural test `title_block_is_centred_above_the_meta`; 12 tests pass, clippy
+  clean, all three decks re-gate PASS. Grade of the gated render: [space 0.87,
+  body 0.87, variety 0.85, images 0.79, title 0.85] — aimed axis cleared the bar, no
+  axis regressed more than 0.05 (regression decks: think-tank [0.86, 0.90, 0.84,
+  0.74, 0.87], lab [0.83, 0.89, 0.75, 0.33 n/a, 0.85]). Remaining sub-bar axis:
+  images 0.79.
