@@ -176,3 +176,29 @@ control axis >= 0.85; the images axis applies (control carries `IMG:`).
   0.85->0.83 (-0.02, inside the noise floor, not a regression). Regression decks:
   think-tank [0.85, 0.89, 0.85, 0.81, 0.87], lab [0.83, 0.90, 0.75, 0.30 n/a, 0.85].
   Remaining sub-bar axis: variety 0.83 (gap 0.02, at the noise floor).
+
+- **Gen 9 (rejected, reverted)** — aimed at variety 0.83. Fix: removed the colon from
+  the hero page's first claim in `ui/deckgen/think-tank.control.md` so no tracked
+  claim-header renders on P5 (P4 and P5 were the only content pages sharing the
+  accent-dash + claim-header pattern; layout evidence: claim-header items on P4 y187
+  and P5 y199). Grade: [space 0.89, body 0.87, variety 0.84, images 0.86, title 0.86] —
+  variety moved +0.01, inside the ±0.02 noise floor, and did not clear 0.85; no axis
+  regressed > 0.05. Rejected per the accept rule: files reverted with `git checkout`,
+  last accepted generation stayed gen 8.
+
+- **Gen 10 (accepted — exit bar met)** — aimed at variety again with a structural
+  mechanism: the list family now sets three or more bullets in TWO aligned columns when
+  the slide closes with stat cards (`paint_content` list path). Measured on the
+  control render: P2 bullets were a full-width single column (widths up to 698pt,
+  y179-387) -> two columns, left x80 (y183 h108, y309 h81), right x467 (y183 h81),
+  column tops aligned by sharing one stretched gap (first attempt misaligned them
+  179 vs 183). Side effect, measured: the two-column fit needs more lines, so the
+  deck-wide body stepped 20pt -> 18pt (DECKGEN_VERBOSE=1); 18pt still grades body
+  0.91. New behavioural test `long_list_sets_bullets_in_two_columns`; 14 tests pass,
+  clippy clean, all three decks re-gate PASS. Grade of the gated render: [space 0.89,
+  body 0.91, variety 0.86, images 0.87, title 0.88] — EVERY applicable axis >= 0.85,
+  and no axis regressed > 0.05 against gen 8 [0.88, 0.89, 0.83, 0.89, 0.86]. Exit bar
+  met; the run stops on stop condition 1. Regression decks: think-tank [0.84, 0.90,
+  0.85, 0.76, 0.85] (images -0.05, at the allowance, not over it), lab [0.80, 0.89,
+  0.76, 0.28 n/a, 0.79 — lab's title-page geometry is unchanged since gen 7, so the
+  0.85->0.79 move is transcript noise on an identical render].

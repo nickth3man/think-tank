@@ -28,7 +28,9 @@ Layout families (chosen per slide from content):
 1. **Title** (first block): kicker, huge display title, subtitle, bottom meta anchor;
    the block is centred in the space above the meta anchor so the voids above and
    below it are equal.
-2. **List**: bullets at a deck-wide fitted size (varies layout, not type size), stat cards.
+2. **List**: bullets at a deck-wide fitted size (varies layout, not type size), stat
+   cards. Three or more bullets on a stats-closing slide are set in two aligned
+   columns, so the list family's middle differs from the other families'.
 3. **Image split**: text column + image whose frame fills its half of the content
    width and the band above the card row (grown up to 20% past the aspect fit,
    vertically centred), with the source centre-cropped to the frame's aspect so the

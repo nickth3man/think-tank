@@ -957,57 +957,92 @@ fn paint_content(
         paint_stats_inner(p, ctx, s, img.is_some(), Some(yy + 28.0), true);
         return;
     }
-    // List path: paragraphs and bullets in one flow, deck-wide fitted size.
+    // List path: paragraphs and bullets in one flow, deck-wide fitted size. A list of
+    // three or more bullets closing with stat cards is set in two columns, so the list
+    // family's middle differs from every other family's (visual pacing).
     let items: Vec<(&str, bool)> = s
         .paragraphs
         .iter()
         .map(|t| (t.as_str(), false))
         .chain(s.bullets.iter().map(|t| (t.as_str(), true)))
         .collect();
-    let gap = 14.0;
+    let two_col = img.is_none()
+        && s.paragraphs.is_empty()
+        && s.bullets.len() >= 3
+        && !s.stats.is_empty();
+    let col_gap = 44.0;
+    let item_w = |bullet: bool| {
+        if two_col {
+            (body_w - col_gap) / 2.0 - if bullet { 24.0 } else { 0.0 }
+        } else if bullet {
+            body_w - 24.0
+        } else {
+            body_w
+        }
+    };
+    let cols: Vec<Vec<(&str, bool)>> = if two_col {
+        let mid = items.len().div_ceil(2);
+        vec![items[..mid].to_vec(), items[mid..].to_vec()]
+    } else {
+        vec![items.clone()]
+    };
+    let col_w = if two_col {
+        (body_w - col_gap) / 2.0
+    } else {
+        body_w
+    };
+    let col_h = |sz: f32, col: &[(&str, bool)]| -> f32 {
+        col.iter()
+            .map(|(t, b)| text_galley(ctx, t, inter(sz), INK, item_w(*b), sz * 1.5).size().y + 14.0)
+            .sum()
+    };
+    let gap: f32 = 14.0;
     let fitted = [30.0f32, 27.0, 24.0, 22.0, 20.0, 18.0, 16.0, 15.0]
         .into_iter()
         .find(|&sz| {
-            let mut h = 0.0;
-            for (t, bullet) in &items {
-                let w = if *bullet { body_w - 24.0 } else { body_w };
-                h += text_galley(ctx, t, inter(sz), INK, w, sz * 1.5).size().y + gap;
-            }
+            let h = cols.iter().map(|c| col_h(sz, c)).fold(0.0f32, f32::max);
             y + h <= floor
         })
         .unwrap_or(15.0);
     fit.set(fit.get().min(fitted.min(30.0)));
     let size = forced.unwrap_or(fit.get().min(30.0));
-    let used: f32 = items
-        .iter()
-        .map(|(t, bullet)| {
-            let w = if *bullet { body_w - 24.0 } else { body_w };
-            text_galley(ctx, t, inter(size), INK, w, size * 1.5)
-                .size()
-                .y
-        })
-        .sum();
-    let gaps = items.len() + 1;
-    let gap = gap.max(((floor - y - used) / gaps as f32).min(gap * 1.3));
-    y += gap;
     let mut copy_bottom = y;
-    for (t, bullet) in items.iter() {
-        let w = if *bullet { body_w - 24.0 } else { body_w };
-        let g = text_galley(ctx, t, inter(size), INK, w, size * 1.5);
-        let h = g.size().y;
-        if *bullet {
-            let m = size * 0.28;
-            p.rect_filled(
-                Rect::from_min_size(Pos2::new(MARGIN, y + size * 0.55 - m / 2.0), vec2(m, m)),
-                1.5,
-                ACCENT,
-            );
-            paint_text(p, Pos2::new(MARGIN + 24.0, y), g, "bullet", t);
-        } else {
-            paint_text(p, Pos2::new(MARGIN, y), g, "para", t);
+    // One shared stretched gap for every column, so the column tops align.
+    let g = cols
+        .iter()
+        .map(|col| {
+            let used: f32 = col
+                .iter()
+                .map(|(t, b)| {
+                    text_galley(ctx, t, inter(size), INK, item_w(*b), size * 1.5)
+                        .size()
+                        .y
+                })
+                .sum();
+            let gaps = col.len() + 1;
+            gap.max(((floor - y - used) / gaps as f32).min(gap * 1.3))
+        })
+        .fold(gap, f32::max);
+    for (ci, col) in cols.iter().enumerate() {
+        let x = MARGIN + ci as f32 * (col_w + col_gap);
+        let mut yy = y + g;
+        for (t, bullet) in col.iter() {
+            let gg = text_galley(ctx, t, inter(size), INK, item_w(*bullet), size * 1.5);
+            let h = gg.size().y;
+            if *bullet {
+                let m = size * 0.28;
+                p.rect_filled(
+                    Rect::from_min_size(Pos2::new(x, yy + size * 0.55 - m / 2.0), vec2(m, m)),
+                    1.5,
+                    ACCENT,
+                );
+                paint_text(p, Pos2::new(x + 24.0, yy), gg, "bullet", t);
+            } else {
+                paint_text(p, Pos2::new(x, yy), gg, "para", t);
+            }
+            copy_bottom = copy_bottom.max(yy + h);
+            yy += h + g;
         }
-        copy_bottom = y + h;
-        y += h + gap;
     }
     if let Some(d) = &s.divider {
         let dy = if s.stats.is_empty() {
@@ -1339,6 +1374,31 @@ mod tests {
             "image bottom {:.1} runs toward the card row at {:.1}",
             img.y + img.h,
             card.y
+        );
+    }
+
+    /// A list slide with three or more bullets and stat cards sets the bullets in two
+    /// columns: the third bullet shares the first bullet's top row, in a second column.
+    #[test]
+    fn long_list_sets_bullets_in_two_columns() {
+        let deck = spec::parse(
+            "# D\n---\n# Slide\nKICKER: K\n- first bullet line long enough to wrap onto a second line here\n- second bullet line, also long enough to wrap onto a second line\n- third bullet line, long enough to wrap onto a second line as well\nSTAT: 1 | ONE\nSTAT: 2 | TWO\n",
+            std::path::Path::new("."),
+        );
+        render_deck(&deck);
+        let page = &layout()[1];
+        let bullets: Vec<&LayoutItem> = page.iter().filter(|i| i.kind == "bullet").collect();
+        assert_eq!(bullets.len(), 3, "all three bullets survive");
+        let rows: std::collections::HashSet<u32> = bullets.iter().map(|b| b.y.to_bits()).collect();
+        assert_eq!(
+            rows.len(),
+            2,
+            "three bullets should occupy two columns (two distinct top rows), got {:?}",
+            bullets.iter().map(|b| (b.x, b.y)).collect::<Vec<_>>()
+        );
+        assert!(
+            bullets.iter().any(|b| b.x > MARGIN + 100.0),
+            "a second column exists right of the first"
         );
     }
 
