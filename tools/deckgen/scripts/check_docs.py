@@ -138,16 +138,38 @@ def check_stop_conditions(root: Path, failures: list[str]) -> None:
             failures.append(f"workflows/deckgen-iteration.md: stop condition missing: {stop}")
 
 
+INSTALLED = Path.home() / ".omp/agent/skills/deckgen-loop/SKILL.md"
+
+
+def report_install_drift(root: Path) -> None:
+    """Warn, never fail: the repo copy is the source, the installed copy is derived.
+
+    A fresh clone has no install, so this cannot be a hard check; a stale install means the
+    agent is following a procedure that has since been edited in the repo.
+    """
+    source = root / "workflows/deckgen-loop/SKILL.md"
+    if INSTALLED.is_file() and source.is_file() and INSTALLED.read_bytes() != source.read_bytes():
+        print(
+            f"warning: {INSTALLED} differs from {source}; reinstall with "
+            f"tools/deckgen/scripts/install_skill.sh",
+            file=sys.stderr,
+        )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", default=".", help="repository root")
     ap.add_argument(
         "--skill",
-        default=str(Path.home() / ".omp/agent/skills/deckgen-loop/SKILL.md"),
-        help="the loop skill file",
+        default="workflows/deckgen-loop/SKILL.md",
+        help="the loop skill file, repo-relative by default so a fresh clone checks the "
+        "versioned copy rather than a machine-local install",
     )
     args = ap.parse_args()
-    root, skill = Path(args.repo).resolve(), Path(args.skill).expanduser()
+    root = Path(args.repo).resolve()
+    skill = Path(args.skill).expanduser()
+    if not skill.is_absolute():
+        skill = root / skill
 
     failures: list[str] = []
     check_skill_frontmatter(skill, failures)
@@ -156,6 +178,8 @@ def main() -> int:
     check_shared_numbers(root, skill, failures)
     check_step_structure(skill, failures)
     check_stop_conditions(root, failures)
+
+    report_install_drift(root)
 
     if failures:
         print(f"FAIL ({len(failures)} problems)")

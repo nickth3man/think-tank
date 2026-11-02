@@ -2,7 +2,8 @@
 
 The recurring loop: improve the deckgen decks' executive quality one **generation** at a
 time, with no human checkpoint. This file is the loop's definition and wins when the
-procedure disagrees on *what*; the procedure is `~/.omp/agent/skills/deckgen-loop/SKILL.md`
+procedure disagrees on *what*; the procedure is `workflows/deckgen-loop/SKILL.md` (installed to
+`~/.omp/agent/skills/deckgen-loop/SKILL.md` by `tools/deckgen/scripts/install_skill.sh`)
 and the frozen grading instrument is `tools/deckgen/GRADE.md`.
 
 ## Trigger
@@ -58,6 +59,13 @@ the documents name exists, the numbers two documents share agree, the eight step
 stop condition survive, and the skill's frontmatter names its directory. A documentation
 edit is not done until it passes, and a change to the checker itself is not done until
 `.venv/bin/python -m unittest tools.deckgen.scripts.test_check_docs` passes too.
+
+The repo copy of the loop skill is the source of truth; the installed copy is derived.
+Reinstall after editing it:
+
+```bash
+tools/deckgen/scripts/install_skill.sh
+```
 
 ## Invariants
 

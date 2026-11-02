@@ -16,7 +16,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
 CHECK = REPO / "tools/deckgen/scripts/check_docs.py"
-SKILL = Path.home() / ".omp/agent/skills/deckgen-loop/SKILL.md"
+# The versioned copy, not the machine-local install: a fresh clone must be able to run these.
+SKILL = REPO / "workflows/deckgen-loop/SKILL.md"
 PY = REPO / ".venv/bin/python"
 
 
@@ -90,6 +91,14 @@ class CheckDocsTest(unittest.TestCase):
             out = run(repo=repo_copy)
             self.assertEqual(out.returncode, 1, out.stdout)
             self.assertIn("stop condition missing", out.stdout)
+
+    def test_default_skill_is_inside_the_repo(self):
+        """The suite must not depend on a machine-local install."""
+        out = subprocess.run(
+            [str(PY), str(CHECK)], cwd=str(REPO), capture_output=True, text=True
+        )
+        self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+        self.assertTrue((REPO / "workflows/deckgen-loop/SKILL.md").is_file())
 
     def test_disagreeing_numbers_fail(self):
         with tempfile.TemporaryDirectory() as tmp:
