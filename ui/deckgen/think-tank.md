@@ -39,10 +39,8 @@ STAT: 0 | NETWORK CALLS IN TESTS
 KICKER: THE HONEST NUMBERS
 # What the arbiter actually saw
 HERO: 1.00 | CONVERGED SCORE - AGAINST A 0.65 TARGET, IN 2 OF 6 ROUNDS
-THE FORCED RUN: The same loop scored 0.1536 against an impossible 1.01 target.
+THE FORCED RUN: The same loop scored 0.1536 against an impossible 1.01 target, spending 392 tokens.
 - A benchmark that only shows wins is marketing — this one shows both.
-STAT: 0.15 | FORCED SCORE
-STAT: 392 | TOKENS SPENT
 ---
 
 KICKER: PART TWO
