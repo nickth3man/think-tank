@@ -1,3 +1,10 @@
+# deckgen iteration log
+
+> **Moved:** the deckgen tool, skill, loop workflow and grade instrument now live in
+> [nickth3man/deckgen](https://github.com/nickth3man/deckgen). This log is the historical
+> record through gen 17 and the strict-bar pass; paths below (`tools/deckgen/...`,
+> `ui/deckgen/...`) refer to their locations at the time of each entry.
+
 # deckgen iteration log and exit definition
 
 The deck was iterated with a Jev-gated loop: each iteration graded the rendered PDF
