@@ -1,0 +1,18 @@
+[package]
+name = "deckgen"
+version = "0.1.0"
+edition = "2021"
+description = "Render styled PDF decks from a Markdown slide spec using ArtCraft's design system (headless egui → raster pages → PDF)"
+
+[[bin]]
+name = "deckgen"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+egui = "0.36"
+egui_kittest = { version = "0.36", features = ["snapshot", "wgpu"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+pdf-writer = "0.14"
+flate2 = "1"
