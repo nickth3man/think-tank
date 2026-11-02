@@ -1,94 +1,50 @@
 .DEFAULT_GOAL := help
-.PHONY: help install sync test test-fast lint fmt typecheck ty security deadcode \
-        pre-commit-install pre-commit mutation nox-all clean
+.PHONY: help build run fmt fmt-check lint test check clean
 
-UV := uv run
+CARGO := cargo
+RUST_DIR := rust
 
 # ─── Setup ───────────────────────────────────────────────────────────────────
 
-install: ## Install all dependencies including dev group
-	uv sync --group dev
+build: ## Compile the crate (debug)
+	$(CARGO) build --manifest-path $(RUST_DIR)/Cargo.toml
 
-sync: install ## Alias for install
-
-pre-commit-install: ## Install pre-commit hooks into .git/hooks
-	$(UV) pre-commit install
+release: ## Compile the crate (release, used for real runs)
+	$(CARGO) build --release --manifest-path $(RUST_DIR)/Cargo.toml
 
 # ─── Testing ─────────────────────────────────────────────────────────────────
 
-test: ## Run full test suite with coverage
-	$(UV) pytest
+test: ## Run the full test suite (stub-server integration + golden parity)
+	$(CARGO) test --manifest-path $(RUST_DIR)/Cargo.toml
 
-test-fast: ## Run tests without coverage (faster feedback)
-	$(UV) pytest --no-cov -x
-
-test-watch: ## Re-run tests on file changes (requires pytest-watch)
-	$(UV) ptw -- --no-cov
-
-mutation: ## Run mutation tests with mutmut (slow)
-	$(UV) mutmut run
+test-fast: ## Run the integration tests only (skips doc tests)
+	$(CARGO) test --manifest-path $(RUST_DIR)/Cargo.toml --tests
 
 # ─── Linting & Formatting ────────────────────────────────────────────────────
 
-lint: ## Check for lint errors with ruff
-	$(UV) ruff check .
-
-fmt: ## Auto-fix lint issues and reformat code
-	$(UV) ruff check --fix .
-	$(UV) ruff format .
+fmt: ## Apply rustfmt
+	$(CARGO) fmt --manifest-path $(RUST_DIR)/Cargo.toml
 
 fmt-check: ## Check formatting without making changes
-	$(UV) ruff format --check .
+	$(CARGO) fmt --manifest-path $(RUST_DIR)/Cargo.toml --check
 
-# ─── Type Checking ───────────────────────────────────────────────────────────
-
-typecheck: ## Run pyright type checker
-	$(UV) pyright
-
-ty: ## Run ty type checker (Astral)
-	$(UV) ty check
-
-# ─── Security & Analysis ─────────────────────────────────────────────────────
-
-security: ## Run bandit security scan
-	$(UV) bandit -r think_tank main.py app.py -c pyproject.toml
-
-deadcode: ## Find unused code with vulture
-	$(UV) vulture think_tank main.py app.py
-
-# ─── Pre-commit ───────────────────────────────────────────────────────────────
-
-pre-commit: ## Run all pre-commit hooks against all files
-	$(UV) pre-commit run --all-files
-
-# ─── Nox (multi-session automation) ─────────────────────────────────────────
-
-nox-all: ## Run all nox sessions
-	$(UV) nox
-
-nox-tests: ## Run nox tests session only
-	$(UV) nox -s tests
-
-nox-lint: ## Run nox lint session only
-	$(UV) nox -s lint
+lint: ## Run clippy, warnings denied
+	$(CARGO) clippy --manifest-path $(RUST_DIR)/Cargo.toml --all-targets -- -D warnings
 
 # ─── All quality gates ───────────────────────────────────────────────────────
 
-check: lint fmt-check typecheck ty security ## Run all quality checks (no mutation)
+check: fmt-check lint test ## Formatting, lints and tests (what CI runs)
 
 # ─── Run ─────────────────────────────────────────────────────────────────────
 
-run: ## Run CLI deliberation (prompts for topic)
-	$(UV) python main.py
-
-app: ## Launch Gradio web UI
-	$(UV) python app.py
+run: ## Run CLI deliberation: make run TOPIC="..." (prompts when TOPIC is empty)
+	$(CARGO) run --release --manifest-path $(RUST_DIR)/Cargo.toml -- $(TOPIC)
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 
-clean: ## Remove build artifacts and caches
-	rm -rf htmlcov .coverage coverage.xml .pytest_cache .ruff_cache .mutmut-cache
-	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+clean: ## Remove build artifacts and the local knowledge base
+	$(CARGO) clean --manifest-path $(RUST_DIR)/Cargo.toml
+	rm -rf kb_store
 
 # ─── Help ────────────────────────────────────────────────────────────────────
 

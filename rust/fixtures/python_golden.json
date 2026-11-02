@@ -1,0 +1,530 @@
+{
+  "scenarios": [
+    {
+      "name": "converge",
+      "topic": "Should companies adopt fully remote work?",
+      "config": {
+        "alignment_threshold": 0.65,
+        "min_rounds": 2,
+        "max_rounds": 6
+      },
+      "evidence_seed": "Remote work has been shown to increase productivity for knowledge workers by 13%.\nCommunication overhead increases by approximately 30% in fully remote teams.",
+      "script": [
+        {
+          "schema": "Researcher",
+          "payload": {
+            "content": "Evidence indicates remote work reliably raises individual productivity, driven by quieter work environments and fewer sick days across large employee samples.",
+            "dimensions": {
+              "feasibility": "high",
+              "risk": "moderate",
+              "impact": "high"
+            },
+            "confidence": "high",
+            "evidence_summary": "Two large-sample studies agree on direction."
+          }
+        },
+        {
+          "schema": "Skeptic",
+          "payload": {
+            "target_claim_id": "__FIRST_CLAIM_ID__",
+            "stance": "oppose",
+            "content": "The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and hides coordination costs.",
+            "reasoning": "Scope of the cited samples is narrower than the claim asserts."
+          }
+        },
+        {
+          "schema": "Visionary",
+          "payload": {
+            "content": "Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams reserve dense weeks for coordination-heavy work.",
+            "related_claim_ids": [
+              "__FIRST_CLAIM_ID__"
+            ],
+            "novelty_rationale": "Reframes the office as a scheduling primitive, not a location."
+          }
+        },
+        {
+          "schema": "Synthesizer",
+          "payload": {
+            "content": "Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled hybrid where focus work is remote and coordination is co-located.",
+            "incorporated_claim_ids": [
+              "__FIRST_CLAIM_ID__"
+            ],
+            "resolved_tensions": [
+              "Individual output versus coordination cost, resolved as scoped."
+            ],
+            "remaining_tensions": [
+              "Coordination cost is unquantified."
+            ],
+            "confidence": "medium"
+          }
+        },
+        {
+          "schema": "Researcher",
+          "payload": {
+            "content": "Evidence indicates remote work reliably raises individual productivity, driven by quieter work environments and fewer sick days across large employee samples.",
+            "dimensions": {
+              "feasibility": "high",
+              "risk": "moderate",
+              "impact": "high"
+            },
+            "confidence": "high",
+            "evidence_summary": "Two large-sample studies agree on direction."
+          }
+        },
+        {
+          "schema": "Skeptic",
+          "payload": {
+            "target_claim_id": "__FIRST_CLAIM_ID__",
+            "stance": "refine",
+            "content": "The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and hides coordination costs.",
+            "reasoning": "Scope of the cited samples is narrower than the claim asserts."
+          }
+        },
+        {
+          "schema": "Visionary",
+          "payload": {
+            "content": "Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams reserve dense weeks for coordination-heavy work.",
+            "related_claim_ids": [
+              "__FIRST_CLAIM_ID__"
+            ],
+            "novelty_rationale": "Reframes the office as a scheduling primitive, not a location."
+          }
+        },
+        {
+          "schema": "Synthesizer",
+          "payload": {
+            "content": "Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled hybrid where focus work is remote and coordination is co-located.",
+            "incorporated_claim_ids": [
+              "__FIRST_CLAIM_ID__"
+            ],
+            "resolved_tensions": [
+              "Individual output versus coordination cost, resolved as scoped."
+            ],
+            "remaining_tensions": [],
+            "confidence": "medium"
+          }
+        }
+      ],
+      "rendered_rounds": [
+        "\n  Round ............. 0\n  Alignment score ... 0.0000\n",
+        "\n  Round ............. 1\n  Alignment score ... 0.0000\n\n  Claims (1):\n    [researcher] round=0 confidence=high\n      Evidence indicates remote work reliably raises individual productivity, driven by quieter work environments and [...]\n\n  Challenges (1):\n    [skeptic -> oppose] target=00000001...\n      The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and [...]\n\n  Lateral Ideas (1):\n    [visionary] round=0\n      Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams [...]\n\n  Synthesis Attempts (1):\n    round=0 confidence=medium\n      Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled [...]\n\n  Arbiter Directive -> loop back for round 1\n    Focus: overall reasoning\n",
+        "\n  Round ............. 2\n  Alignment score ... 1.0000\n\n  Claims (2):\n    [researcher] round=0 confidence=high\n      Evidence indicates remote work reliably raises individual productivity, driven by quieter work environments and [...]\n    [researcher] round=1 confidence=high\n      Evidence indicates remote work reliably raises individual productivity, driven by quieter work environments and [...]\n\n  Challenges (2):\n    [skeptic -> oppose] target=00000001...\n      The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and [...]\n    [skeptic -> refine] target=00000002...\n      The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and [...]\n\n  Lateral Ideas (2):\n    [visionary] round=0\n      Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams [...]\n    [visionary] round=1\n      Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams [...]\n\n  Synthesis Attempts (2):\n    round=0 confidence=medium\n      Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled [...]\n    round=1 confidence=medium\n      Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled [...]\n\n========================================================================\n  FINAL SYNTHESIS\n========================================================================\n  Rounds taken ...... 2\n  Alignment ......... 1.0000\n\n  Remote work raises individual throughput while raising coordination\ncost; the defensible position is a scheduled hybrid where focus work is\nremote and coordination is co-located.\n\n  Unresolved challenges: 2\n"
+      ],
+      "expected": {
+        "claims": [
+          {
+            "id": "00000001-0000-4000-8000-000000000000",
+            "agent_id": "researcher",
+            "round": 0,
+            "content": "Evidence indicates remote work reliably raises individual productivity, driven by quieter work environments and fewer sick days across large employee samples.",
+            "dimensions": {
+              "feasibility": "high",
+              "risk": "moderate",
+              "impact": "high"
+            },
+            "confidence": "high",
+            "evidence_summary": "Two large-sample studies agree on direction.",
+            "embedding": [
+              0.6185193339896662,
+              -0.40800943871636897,
+              -0.6940932597404428,
+              0.7179998627916486,
+              0.8349887603436446,
+              -0.8543568089992116,
+              0.11160639748248413,
+              0.8870368808518783
+            ],
+            "created_at": "<timestamp>"
+          },
+          {
+            "id": "00000002-0000-4000-8000-000000000000",
+            "agent_id": "researcher",
+            "round": 1,
+            "content": "Evidence indicates remote work reliably raises individual productivity, driven by quieter work environments and fewer sick days across large employee samples.",
+            "dimensions": {
+              "feasibility": "high",
+              "risk": "moderate",
+              "impact": "high"
+            },
+            "confidence": "high",
+            "evidence_summary": "Two large-sample studies agree on direction.",
+            "embedding": [
+              0.6185193339896662,
+              -0.40800943871636897,
+              -0.6940932597404428,
+              0.7179998627916486,
+              0.8349887603436446,
+              -0.8543568089992116,
+              0.11160639748248413,
+              0.8870368808518783
+            ],
+            "created_at": "<timestamp>"
+          }
+        ],
+        "challenges": [
+          {
+            "id": "00000003-0000-4000-8000-000000000000",
+            "agent_id": "skeptic",
+            "target_claim_id": "00000001-0000-4000-8000-000000000000",
+            "round": 0,
+            "stance": "oppose",
+            "content": "The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and hides coordination costs.",
+            "reasoning": "Scope of the cited samples is narrower than the claim asserts.",
+            "resolved": false,
+            "created_at": "<timestamp>"
+          },
+          {
+            "id": "00000004-0000-4000-8000-000000000000",
+            "agent_id": "skeptic",
+            "target_claim_id": "00000002-0000-4000-8000-000000000000",
+            "round": 1,
+            "stance": "refine",
+            "content": "The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and hides coordination costs.",
+            "reasoning": "Scope of the cited samples is narrower than the claim asserts.",
+            "resolved": false,
+            "created_at": "<timestamp>"
+          }
+        ],
+        "expansions": [
+          {
+            "id": "00000005-0000-4000-8000-000000000000",
+            "agent_id": "visionary",
+            "round": 0,
+            "content": "Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams reserve dense weeks for coordination-heavy work.",
+            "related_claim_ids": [
+              "00000001-0000-4000-8000-000000000000"
+            ],
+            "novelty_rationale": "Reframes the office as a scheduling primitive, not a location.",
+            "created_at": "<timestamp>"
+          },
+          {
+            "id": "00000006-0000-4000-8000-000000000000",
+            "agent_id": "visionary",
+            "round": 1,
+            "content": "Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams reserve dense weeks for coordination-heavy work.",
+            "related_claim_ids": [
+              "00000002-0000-4000-8000-000000000000"
+            ],
+            "novelty_rationale": "Reframes the office as a scheduling primitive, not a location.",
+            "created_at": "<timestamp>"
+          }
+        ],
+        "syntheses": [
+          {
+            "id": "00000007-0000-4000-8000-000000000000",
+            "agent_id": "synthesizer",
+            "round": 0,
+            "content": "Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled hybrid where focus work is remote and coordination is co-located.",
+            "incorporated_claim_ids": [
+              "00000001-0000-4000-8000-000000000000"
+            ],
+            "resolved_tensions": [
+              "Individual output versus coordination cost, resolved as scoped."
+            ],
+            "remaining_tensions": [
+              "Coordination cost is unquantified."
+            ],
+            "confidence": "medium",
+            "created_at": "<timestamp>"
+          },
+          {
+            "id": "00000008-0000-4000-8000-000000000000",
+            "agent_id": "synthesizer",
+            "round": 1,
+            "content": "Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled hybrid where focus work is remote and coordination is co-located.",
+            "incorporated_claim_ids": [
+              "00000002-0000-4000-8000-000000000000"
+            ],
+            "resolved_tensions": [
+              "Individual output versus coordination cost, resolved as scoped."
+            ],
+            "remaining_tensions": [],
+            "confidence": "medium",
+            "created_at": "<timestamp>"
+          }
+        ],
+        "expansion": null,
+        "synthesis": {
+          "id": "00000009-0000-4000-8000-000000000000",
+          "content": "Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled hybrid where focus work is remote and coordination is co-located.",
+          "contributing_claim_ids": [
+            "00000002-0000-4000-8000-000000000000"
+          ],
+          "alignment_score": 1.0,
+          "rounds_taken": 2,
+          "unresolved_challenges": [
+            "00000003-0000-4000-8000-000000000000",
+            "00000004-0000-4000-8000-000000000000"
+          ],
+          "created_at": "<timestamp>"
+        },
+        "current_round": 2,
+        "alignment_score": 1.0,
+        "evidence": "Remote work has been shown to increase productivity for knowledge workers by 13%.\nCommunication overhead increases by approximately 30% in fully remote teams."
+      }
+    },
+    {
+      "name": "forced",
+      "topic": "Should companies adopt fully remote work?",
+      "config": {
+        "alignment_threshold": 1.01,
+        "min_rounds": 2,
+        "max_rounds": 2
+      },
+      "evidence_seed": "Remote work has been shown to increase productivity for knowledge workers by 13%.\nCommunication overhead increases by approximately 30% in fully remote teams.",
+      "script": [
+        {
+          "schema": "Researcher",
+          "payload": {
+            "content": "Coordination overhead, not individual output, is the binding constraint: dense synchronous blocks are what remote schedules actually erode.",
+            "dimensions": {
+              "feasibility": "high",
+              "risk": "moderate",
+              "impact": "high"
+            },
+            "confidence": "high",
+            "evidence_summary": "Two large-sample studies agree on direction."
+          }
+        },
+        {
+          "schema": "Skeptic",
+          "payload": {
+            "target_claim_id": "__FIRST_CLAIM_ID__",
+            "stance": "support",
+            "content": "The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and hides coordination costs.",
+            "reasoning": "Scope of the cited samples is narrower than the claim asserts."
+          }
+        },
+        {
+          "schema": "Visionary",
+          "payload": {
+            "content": "Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams reserve dense weeks for coordination-heavy work.",
+            "related_claim_ids": [
+              "__FIRST_CLAIM_ID__"
+            ],
+            "novelty_rationale": "Reframes the office as a scheduling primitive, not a location."
+          }
+        },
+        {
+          "schema": "Synthesizer",
+          "payload": {
+            "content": "Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled hybrid where focus work is remote and coordination is co-located.",
+            "incorporated_claim_ids": [
+              "__FIRST_CLAIM_ID__"
+            ],
+            "resolved_tensions": [
+              "Individual output versus coordination cost, resolved as scoped."
+            ],
+            "remaining_tensions": [
+              "Coordination cost is unquantified."
+            ],
+            "confidence": "medium"
+          }
+        },
+        {
+          "schema": "Researcher",
+          "payload": {
+            "content": "Evidence indicates remote work reliably raises individual productivity, driven by quieter work environments and fewer sick days across large employee samples.",
+            "dimensions": {
+              "feasibility": "high",
+              "risk": "moderate",
+              "impact": "high"
+            },
+            "confidence": "high",
+            "evidence_summary": "Two large-sample studies agree on direction."
+          }
+        },
+        {
+          "schema": "Skeptic",
+          "payload": {
+            "target_claim_id": "__FIRST_CLAIM_ID__",
+            "stance": "oppose",
+            "content": "The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and hides coordination costs.",
+            "reasoning": "Scope of the cited samples is narrower than the claim asserts."
+          }
+        },
+        {
+          "schema": "Visionary",
+          "payload": {
+            "content": "Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams reserve dense weeks for coordination-heavy work.",
+            "related_claim_ids": [
+              "__FIRST_CLAIM_ID__"
+            ],
+            "novelty_rationale": "Reframes the office as a scheduling primitive, not a location."
+          }
+        },
+        {
+          "schema": "Synthesizer",
+          "payload": {
+            "content": "Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled hybrid where focus work is remote and coordination is co-located.",
+            "incorporated_claim_ids": [
+              "__FIRST_CLAIM_ID__"
+            ],
+            "resolved_tensions": [
+              "Individual output versus coordination cost, resolved as scoped."
+            ],
+            "remaining_tensions": [],
+            "confidence": "medium"
+          }
+        }
+      ],
+      "rendered_rounds": [
+        "\n  Round ............. 0\n  Alignment score ... 0.0000\n",
+        "\n  Round ............. 1\n  Alignment score ... 0.2000\n\n  Claims (1):\n    [researcher] round=0 confidence=high\n      Coordination overhead, not individual output, is the binding constraint: dense synchronous blocks are what remote [...]\n\n  Challenges (1):\n    [skeptic -> support] target=00000001...\n      The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and [...]\n\n  Lateral Ideas (1):\n    [visionary] round=0\n      Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams [...]\n\n  Synthesis Attempts (1):\n    round=0 confidence=medium\n      Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled [...]\n\n  Arbiter Directive -> loop back for round 1\n    Focus: overall reasoning\n",
+        "\n  Round ............. 2\n  Alignment score ... 0.1536\n\n  Claims (2):\n    [researcher] round=0 confidence=high\n      Coordination overhead, not individual output, is the binding constraint: dense synchronous blocks are what remote [...]\n    [researcher] round=1 confidence=high\n      Evidence indicates remote work reliably raises individual productivity, driven by quieter work environments and [...]\n\n  Challenges (2):\n    [skeptic -> support] target=00000001...\n      The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and [...]\n    [skeptic -> oppose] target=00000002...\n      The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and [...]\n\n  Lateral Ideas (2):\n    [visionary] round=0\n      Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams [...]\n    [visionary] round=1\n      Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams [...]\n\n  Synthesis Attempts (2):\n    round=0 confidence=medium\n      Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled [...]\n    round=1 confidence=medium\n      Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled [...]\n\n========================================================================\n  FINAL SYNTHESIS\n========================================================================\n  Rounds taken ...... 2\n  Alignment ......... 0.1536\n\n  Remote work raises individual throughput while raising coordination\ncost; the defensible position is a scheduled hybrid where focus work is\nremote and coordination is co-located.\n\n  Unresolved challenges: 2\n"
+      ],
+      "expected": {
+        "claims": [
+          {
+            "id": "00000001-0000-4000-8000-000000000000",
+            "agent_id": "researcher",
+            "round": 0,
+            "content": "Coordination overhead, not individual output, is the binding constraint: dense synchronous blocks are what remote schedules actually erode.",
+            "dimensions": {
+              "feasibility": "high",
+              "risk": "moderate",
+              "impact": "high"
+            },
+            "confidence": "high",
+            "evidence_summary": "Two large-sample studies agree on direction.",
+            "embedding": [
+              0.9061856122252951,
+              0.09659093588085454,
+              0.0707432338304419,
+              -0.549411399106486,
+              0.6385774989685058,
+              -0.5006125236279808,
+              0.2980129794346784,
+              -0.5812765056381295
+            ],
+            "created_at": "<timestamp>"
+          },
+          {
+            "id": "00000002-0000-4000-8000-000000000000",
+            "agent_id": "researcher",
+            "round": 1,
+            "content": "Evidence indicates remote work reliably raises individual productivity, driven by quieter work environments and fewer sick days across large employee samples.",
+            "dimensions": {
+              "feasibility": "high",
+              "risk": "moderate",
+              "impact": "high"
+            },
+            "confidence": "high",
+            "evidence_summary": "Two large-sample studies agree on direction.",
+            "embedding": [
+              0.6185193339896662,
+              -0.40800943871636897,
+              -0.6940932597404428,
+              0.7179998627916486,
+              0.8349887603436446,
+              -0.8543568089992116,
+              0.11160639748248413,
+              0.8870368808518783
+            ],
+            "created_at": "<timestamp>"
+          }
+        ],
+        "challenges": [
+          {
+            "id": "00000003-0000-4000-8000-000000000000",
+            "agent_id": "skeptic",
+            "target_claim_id": "00000001-0000-4000-8000-000000000000",
+            "round": 0,
+            "stance": "support",
+            "content": "The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and hides coordination costs.",
+            "reasoning": "Scope of the cited samples is narrower than the claim asserts.",
+            "resolved": false,
+            "created_at": "<timestamp>"
+          },
+          {
+            "id": "00000004-0000-4000-8000-000000000000",
+            "agent_id": "skeptic",
+            "target_claim_id": "00000002-0000-4000-8000-000000000000",
+            "round": 1,
+            "stance": "oppose",
+            "content": "The productivity figure comes from knowledge workers only, so generalising it to all roles overstates the case and hides coordination costs.",
+            "reasoning": "Scope of the cited samples is narrower than the claim asserts.",
+            "resolved": false,
+            "created_at": "<timestamp>"
+          }
+        ],
+        "expansions": [
+          {
+            "id": "00000005-0000-4000-8000-000000000000",
+            "agent_id": "visionary",
+            "round": 0,
+            "content": "Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams reserve dense weeks for coordination-heavy work.",
+            "related_claim_ids": [
+              "00000001-0000-4000-8000-000000000000"
+            ],
+            "novelty_rationale": "Reframes the office as a scheduling primitive, not a location.",
+            "created_at": "<timestamp>"
+          },
+          {
+            "id": "00000006-0000-4000-8000-000000000000",
+            "agent_id": "visionary",
+            "round": 1,
+            "content": "Treat the office as an intermittently scheduled collaboration venue rather than a daily default, letting teams reserve dense weeks for coordination-heavy work.",
+            "related_claim_ids": [
+              "00000002-0000-4000-8000-000000000000"
+            ],
+            "novelty_rationale": "Reframes the office as a scheduling primitive, not a location.",
+            "created_at": "<timestamp>"
+          }
+        ],
+        "syntheses": [
+          {
+            "id": "00000007-0000-4000-8000-000000000000",
+            "agent_id": "synthesizer",
+            "round": 0,
+            "content": "Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled hybrid where focus work is remote and coordination is co-located.",
+            "incorporated_claim_ids": [
+              "00000001-0000-4000-8000-000000000000"
+            ],
+            "resolved_tensions": [
+              "Individual output versus coordination cost, resolved as scoped."
+            ],
+            "remaining_tensions": [
+              "Coordination cost is unquantified."
+            ],
+            "confidence": "medium",
+            "created_at": "<timestamp>"
+          },
+          {
+            "id": "00000008-0000-4000-8000-000000000000",
+            "agent_id": "synthesizer",
+            "round": 1,
+            "content": "Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled hybrid where focus work is remote and coordination is co-located.",
+            "incorporated_claim_ids": [
+              "00000002-0000-4000-8000-000000000000"
+            ],
+            "resolved_tensions": [
+              "Individual output versus coordination cost, resolved as scoped."
+            ],
+            "remaining_tensions": [],
+            "confidence": "medium",
+            "created_at": "<timestamp>"
+          }
+        ],
+        "expansion": null,
+        "synthesis": {
+          "id": "00000009-0000-4000-8000-000000000000",
+          "content": "Remote work raises individual throughput while raising coordination cost; the defensible position is a scheduled hybrid where focus work is remote and coordination is co-located.",
+          "contributing_claim_ids": [
+            "00000002-0000-4000-8000-000000000000"
+          ],
+          "alignment_score": 0.1536,
+          "rounds_taken": 2,
+          "unresolved_challenges": [
+            "00000003-0000-4000-8000-000000000000",
+            "00000004-0000-4000-8000-000000000000"
+          ],
+          "created_at": "<timestamp>"
+        },
+        "current_round": 2,
+        "alignment_score": 0.1536,
+        "evidence": "Remote work has been shown to increase productivity for knowledge workers by 13%.\nCommunication overhead increases by approximately 30% in fully remote teams."
+      }
+    }
+  ]
+}

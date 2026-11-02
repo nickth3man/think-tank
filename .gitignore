@@ -1,36 +1,17 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+# Rust build artifacts
+rust/target/
 
-# Virtual environments
-.venv
-.nox/
+# Local knowledge base (JSON collections per embedding space)
+kb_store/
 
-# Chroma persistent DB
+# Legacy Python Chroma store (not read by the Rust implementation)
 chroma_db/
 
 # Environment variables
 .env
 
-# Test and coverage artifacts
-.coverage
-coverage.xml
-htmlcov/
-.pytest_cache/
-.hypothesis/
-.mutmut-cache
-
 # Tool logs
 *.log
-
-# Tool caches
-.ruff_cache/
-.mypy_cache/
-.ty_cache/
 
 # macOS
 .DS_Store

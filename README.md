@@ -1,6 +1,6 @@
 # Think Tank
 
-Multi-agent deliberation system built with [LangGraph](https://github.com/langchain-ai/langgraph). Four specialised agents collaborate through structured rounds of debate, converging on a synthesised answer.
+Multi-agent deliberation system written in Rust. Four specialised agents collaborate through structured rounds of debate, converging on a synthesised answer.
 
 ## Architecture
 
@@ -22,10 +22,11 @@ START → Researcher → Skeptic → Visionary → Synthesizer → Arbiter
 ## Quick Start
 
 ```bash
-uv sync
-python main.py          # CLI — prompts for a topic
-python app.py           # FastAPI observability dashboard at http://localhost:7860
+cargo build --release --manifest-path rust/Cargo.toml
+cargo run --release --manifest-path rust/Cargo.toml -- "Should companies adopt fully remote work?"
 ```
+
+`make run` is the same thing. With no topic argument the CLI prompts for one.
 
 ## Prerequisites
 
@@ -54,94 +55,70 @@ error instead of silently routing there.
 
 Chat and embeddings are selected independently: `THINK_TANK_PROVIDER` drives
 chat, `THINK_TANK_EMBEDDING_PROVIDER` drives retrieval (default `openrouter`).
-Each Chroma collection is namespaced per embedding space, so switching
+Each knowledge-base collection is namespaced per embedding space, so switching
 embedding models never mixes incompatible vectors.
 
 ## Project Structure
 
 ```
-think_tank/
-├── schemas.py          # Pydantic models (Claim, Challenge, Synthesis, …)
-├── state.py            # LangGraph state definition (ThinkTankState)
-├── llm.py              # Provider registry + chat/embedding factories
-├── kb.py               # Chroma collection + seed documents
-├── graph.py            # Graph topology construction
-├── runner.py           # Run setup shared by CLI + dashboard (config, seed, creds)
-├── telemetry.py        # Span recording + profiling reports
-├── agents/
-│   ├── researcher.py   # Evidence-grounded claims via vector KB
-│   ├── skeptic.py      # Structured challenge generation
-│   ├── visionary.py    # Lateral idea proposals
-│   ├── synthesizer.py  # Cross-agent synthesis attempts
-│   └── arbiter.py      # Arbiter node + convergence logic
-└── dashboard/
-    ├── events.py       # LangGraph stream → dashboard event mapping
-    └── server.py       # FastAPI app (routes, websocket streaming)
-web/index.html          # Dashboard frontend (served by /)
-tests/                  # Mirrors the package; conftest.py holds fixtures
-main.py                 # CLI entry point
-app.py                  # Dashboard entry point (thin alias for the FastAPI app)
+rust/
+├── Cargo.toml
+├── src/
+│   ├── main.rs         # CLI entry point
+│   ├── lib.rs          # Library surface (tests use this)
+│   ├── schemas.rs      # Domain models + dimension coercion
+│   ├── state.rs        # ThinkTankState (no reducers)
+│   ├── llm.rs          # Provider registry + chat/embedding clients
+│   ├── kb.rs           # JSON vector collection + seed documents
+│   ├── graph.rs        # Loop topology + observer
+│   ├── runner.rs       # Run setup (config, seed, credential check)
+│   ├── telemetry.rs    # Span recording + profiling report
+│   ├── print.rs        # CLI rendering
+│   └── agents/
+│       ├── prompts.rs  # System prompts
+│       ├── researcher.rs
+│       ├── skeptic.rs
+│       ├── visionary.rs
+│       ├── synthesizer.rs
+│       └── arbiter.rs  # Arbiter node + convergence logic
+├── fixtures/
+│   └── python_golden.json   # Reference traces from the previous implementation
+└── tests/
+    ├── support/        # Local OpenAI-protocol stub server + normalisation
+    ├── gate1.rs        # Real loop against the stub: ordering, state, formula
+    ├── parity.rs       # Golden-fixture parity
+    └── rules.rs        # Provider/model/credential rules, dimension coercion
 ```
 
 ## Development
 
-### Install
-
 ```bash
-uv sync --group dev
+make build         # cargo build
+make test          # cargo test (stub-server integration + golden parity)
+make fmt           # rustfmt
+make fmt-check     # formatting check
+make lint          # clippy, warnings denied
+make check         # fmt-check + clippy + test — what CI runs
+make run           # release build, then run the CLI
 ```
 
-### Common commands
+Tests never touch the network. A local stub server speaks the OpenAI protocol,
+so the loop, the arbiter formula and the golden-fixture replay all run
+deterministically without credentials.
 
-```bash
-make test          # pytest + coverage report
-make lint          # ruff check
-make fmt           # ruff check --fix + ruff format
-make typecheck     # pyright
-make ty            # ty (Astral type checker)
-make security      # bandit security scan
-make deadcode      # vulture unused-code scan
-make check         # all quality gates (no mutation)
-make pre-commit    # run all pre-commit hooks
-```
-
-### Test automation (nox)
-
-```bash
-uv run nox             # all sessions
-uv run nox -s tests    # tests only
-uv run nox -s lint     # lint only
-uv run nox -s typecheck
-uv run nox -s security
-uv run nox -s mutation  # mutation tests (slow)
-```
-
-### Pre-commit hooks
-
-```bash
-make pre-commit-install   # wire hooks into .git/hooks (once)
-```
-
-Hooks run on every commit: ruff lint+format, bandit, pyright, and standard file hygiene.
+`rust/fixtures/python_golden.json` was recorded from the Python implementation
+this crate replaced. Replaying it is what pins behavioural parity; the recorder
+script beside it is kept for provenance only and cannot run.
 
 ## Tooling
 
 | Tool | Purpose |
 |------|---------|
-| [uv](https://github.com/astral-sh/uv) | Package manager and virtual env |
-| [ruff](https://github.com/astral-sh/ruff) | Linter + formatter (replaces flake8, black, isort) |
-| [pyright](https://github.com/microsoft/pyright) | Static type checker |
-| [ty](https://github.com/astral-sh/ty) | Fast type checker (Astral) |
-| [pytest](https://pytest.org) | Test runner |
-| [hypothesis](https://hypothesis.works) | Property-based testing |
-| [pytest-cov](https://pytest-cov.readthedocs.io) | Coverage reporting |
-| [freezegun](https://github.com/spulec/freezegun) | Time travel for tests |
-| [dirty-equals](https://dirty-equals.helpmanual.io) | Declarative test assertions |
-| [syrupy](https://github.com/syrupy-project/syrupy) | Snapshot testing |
-| [bandit](https://bandit.readthedocs.io) | Security linter |
-| [vulture](https://github.com/jendrikseipp/vulture) | Dead code detection |
-| [mutmut](https://mutmut.readthedocs.io) | Mutation testing |
-| [nox](https://nox.thea.codes) | Test automation across sessions |
+| [Cargo](https://doc.rust-lang.org/cargo/) | Build and test runner |
+| [rustfmt](https://github.com/rust-lang/rustfmt) | Formatter |
+| [clippy](https://github.com/rust-lang/rust-clippy) | Lints (denied in CI) |
+| [serde](https://serde.rs) | Serialization, including Python-compatible timestamps |
+| [ureq](https://github.com/algesten/ureq) | Blocking HTTP client for the OpenAI protocol |
 
 ## Configuration
 
@@ -157,8 +134,8 @@ Key environment variables (see `.env.example`):
 | `THINK_TANK_<AGENT>_MODEL` | — | Per-agent model override |
 | `THINK_TANK_MAX_TOKENS` | `4096` | Runaway guard, not a length control — a tighter cap does not shorten output and can truncate a tool call |
 | `THINK_TANK_REASONING_EFFORT` | provider default | Sent only to providers that accept it (`ollama_cloud`); Mistral answers HTTP 400 |
-| `THINK_TANK_PROFILE` | unset | `1` prints a per-stage latency profile at exit and serves it on `/profile` |
-| `CHROMA_DB_PATH` | `./chroma_db` | Vector store path |
+| `THINK_TANK_PROFILE` | unset | `1` prints a per-stage latency profile at exit |
+| `THINK_TANK_KB_PATH` | `./kb_store` | Knowledge-base directory (one JSON collection per embedding space) |
 
 Convergence parameters are passed at runtime in the state `config` dict:
 
@@ -180,8 +157,6 @@ constant `0.75` and made every run converge on the same number. Consequently
 
 `THINK_TANK_PROFILE=1` records a span for every graph node, LLM call, embedding
 request and vector-store query, then prints exclusive time per kind plus the
-slowest spans. Every span is tagged with the run that produced it, so
-`GET /profile?run_id=<id>` separates concurrent websocket clients; `main.py`
-scopes its own report to the run it just executed. Output tokens dominate: latency tracks output length divided by
+slowest spans. Every span is tagged with the run that produced it, so the CLI scopes its own report to the run it just executed. Output tokens dominate: latency tracks output length divided by
 provider throughput (~200 tok/s), so prompt brevity is the main lever, not
 parallelism.
