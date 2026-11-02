@@ -54,8 +54,10 @@ The loop's own documents are checked mechanically:
 ```
 
 It proves the frozen instrument is single-sourced in `tools/deckgen/GRADE.md`, every path
-the documents name exists, the numbers two documents share agree, and the skill's
-frontmatter names its directory. A documentation edit is not done until it passes.
+the documents name exists, the numbers two documents share agree, the eight steps and every
+stop condition survive, and the skill's frontmatter names its directory. A documentation
+edit is not done until it passes, and a change to the checker itself is not done until
+`.venv/bin/python -m unittest tools.deckgen.scripts.test_check_docs` passes too.
 
 ## Invariants
 

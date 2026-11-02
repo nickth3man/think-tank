@@ -65,8 +65,12 @@ Layout families (chosen per slide from content):
 
 Loop documents are checked separately by `scripts/check_docs.py`: the frozen grading
 instrument (`GRADE.md`) is single-sourced, every path the documents name resolves, and the
-numbers they share agree. Exit 1 on drift; `scripts/test_check_docs.py` proves each check
-still fails on a mutated input.
+numbers they share agree. Exit 1 on drift. The checker's tests prove each failure mode
+still fails, and need no extra dependency:
+
+```bash
+.venv/bin/python -m unittest tools.deckgen.scripts.test_check_docs -v
+```
 
 Example: `ui/deckgen/think-tank.md`.
 
