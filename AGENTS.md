@@ -13,7 +13,7 @@ cargo test --manifest-path rust/Cargo.toml           # make test
 make check                                           # fmt-check + clippy + test (what CI runs)
 ```
 
-`make run` prompts for a topic when no argument is given. All commands run from the repo root; `rust/` is not a separate workspace.
+`make run TOPIC="..."` forwards the topic as one quoted argument (so `?`, `*` and multi-word text are not split or glob-expanded); with no `TOPIC` the CLI prompts for one. All commands run from the repo root; `rust/` is not a separate workspace.
 
 ## Architecture
 

@@ -26,7 +26,9 @@ cargo build --release --manifest-path rust/Cargo.toml
 cargo run --release --manifest-path rust/Cargo.toml -- "Should companies adopt fully remote work?"
 ```
 
-`make run` is the same thing. With no topic argument the CLI prompts for one.
+`make run TOPIC="Should companies adopt fully remote work?"` is the same thing.
+The topic is passed through quoted, so `?`, `*` and multi-word text survive the
+shell; with no `TOPIC` the CLI prompts for one.
 
 ## Prerequisites
 
@@ -99,7 +101,7 @@ make fmt           # rustfmt
 make fmt-check     # formatting check
 make lint          # clippy, warnings denied
 make check         # fmt-check + clippy + test — what CI runs
-make run           # release build, then run the CLI
+make run TOPIC="..."  # release build, then run the CLI on that topic
 ```
 
 Tests never touch the network. A local stub server speaks the OpenAI protocol,

@@ -4,6 +4,10 @@
 CARGO := cargo
 RUST_DIR := rust
 
+# Topic forwarded to the CLI. Quoted so a multi-word topic stays one argument
+# and `?`/`*` are not glob-expanded; empty means "prompt for one".
+TOPIC_ARG := $(if $(strip $(TOPIC)),"$(strip $(TOPIC))",)
+
 # ─── Setup ───────────────────────────────────────────────────────────────────
 
 build: ## Compile the crate (debug)
@@ -38,7 +42,7 @@ check: fmt-check lint test ## Formatting, lints and tests (what CI runs)
 # ─── Run ─────────────────────────────────────────────────────────────────────
 
 run: ## Run CLI deliberation: make run TOPIC="..." (prompts when TOPIC is empty)
-	$(CARGO) run --release --manifest-path $(RUST_DIR)/Cargo.toml -- $(TOPIC)
+	$(CARGO) run --release --manifest-path $(RUST_DIR)/Cargo.toml -- $(TOPIC_ARG)
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 
