@@ -44,9 +44,13 @@ STAT: 0.15 | FORCED SCORE
 STAT: 392 | TOKENS SPENT
 ---
 
-KICKER: WHERE THIS GOES
+KICKER: PART TWO
+# Where this goes
+---
+
+KICKER: THE TAKEAWAY
 # Decks as a build artifact
 CALLOUT: Any repo that emits JSON can emit a deck | Reports, benchmarks and architecture reviews render from the same file. A coding agent regenerates this PDF from repository data — no browser, no network, no layout code.
 STAT: 1 | DESIGN SYSTEM
 STAT: 3 | OFL TYPEFACES
-STAT: 6 | PAGES FROM ONE FILE
+STAT: 7 | PAGES FROM ONE FILE
