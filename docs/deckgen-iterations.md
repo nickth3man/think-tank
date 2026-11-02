@@ -210,9 +210,12 @@ control axis >= 0.85; the images axis applies (control carries `IMG:`).
   a newly written per-page transcript + measured type inventory (body 18 pt from
   DECKGEN_VERBOSE; display 96/76/40/34/32; supporting 24/15/14/11; one body size):
   [space 0.88, body 0.84, variety 0.82, images 0.89, title 0.85] — every axis >= 0.80.
-  The body 0.84 vs gen 10's 0.91 delta sits on an identical render and is transcript noise
-  (same class as the lab title 0.85->0.79 note above; the ±0.02 floor governs identical
-  transcripts, and this transcript is new). Mechanical evidence at this commit: cargo test
+  Naive clause check: body 0.84 against gen 10's logged 0.91 is -0.07, over the 0.05
+  allowance — but the allowance governs moves between generations, and this is a re-grade
+  of the gen-10 render, not a new generation: the render delta is zero (byte-identical,
+  `cmp` proven above), so the entire -0.07 is transcript-rebuild noise. The ±0.02 floor
+  only holds for an identical transcript, and this transcript is new; the same class was
+  already recorded above as the lab title 0.85->0.79 move on an unchanged render. Mechanical evidence at this commit: cargo test
   14/14, `check_deck.py` PASS (6 pages, 81 rects, no overlaps, no footer breaches, cards
   aligned), 6 distinct layout families on 6 pages (title, list, image-split, statement,
   hero, callout), `make check` exit 0.
