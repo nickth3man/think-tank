@@ -22,11 +22,11 @@ filling the gap by inference.
 2. **No awesome list covers print CSS.** There is no curated list for CSS Paged Media, and the
    maintained PDF list (`py-pdf/awesome-pdf`) indexes file-format libraries, not HTML→PDF
    engines, and does not mention WeasyPrint at all.
-3. **WeasyPrint stays.** Measured here: a full 15-page rebuild in 0.85 s, page count and body
-   text matching the committed PDF, against a 2.4 % type-and-geometry shrink that Chrome's
-   `printToPDF` applies unless `preferCSSPageSize` is set. The alternative engines are either
-   browser wrappers (reintroducing the dependency WeasyPrint was chosen to avoid) or
-   alpha-stage Rust engines.
+3. **WeasyPrint stays.** Measured here: a full 15-page rebuild in 0.75 s (three runs:
+   0.75 / 0.75 / 0.74), page count and body text matching Chrome's output after normalisation,
+   against a 2.4 % type-and-geometry shrink that Chrome's `printToPDF` applies unless
+   `preferCSSPageSize` is set. The alternative engines are either browser wrappers
+   (reintroducing the dependency WeasyPrint was chosen to avoid) or alpha-stage Rust engines.
 
 The rest of this document is the evidence for those three sentences, plus the exact diff the
 deck received.
@@ -146,7 +146,7 @@ The candidates the sweep did surface, with the property that decides them:
 | [Vivliostyle CLI](https://github.com/vivliostyle/vivliostyle-cli) | AGPL-3.0 | optional Playwright/docker (`README.md:141-157`) | rejected: browser wrapper + AGPL |
 | [Ironpress](https://github.com/gastongouron/ironpress) | MIT | yes — "No browser, subprocess, or system dependencies" (`README.md:127-128`) | watch: CSS coverage unestablished; ships a Chromium-oracle parity suite (`README.md:504-528`) |
 | [Fullbleed](https://github.com/fullbleed-engine/fullbleed-official) | MIT | yes | rejected: self-declared 2.6 **alpha** (`v2.6.0a14`) |
-| [Typst](https://github.com/typst/typst) | Apache-2.0 | yes, single binary | escape hatch only: native document model, not HTML (`typst.app/docs/reference/html/`) |
+| [Typst](https://github.com/typst/typst) | Apache-2.0 | yes, single binary | escape hatch only: a native document model, not HTML. Its `typst.app/docs/reference/html/` page documents **HTML export** (Typst→HTML), and states it "is currently under active development… only available for experimentation behind a feature flag. Do not use this feature for production use cases." No HTML-*input* path is established. |
 | wkhtmltopdf | — | yes | rejected: archived 2023-01-02 |
 
 Rejected as lists or as sources of truth, with the evidence: `vonnieda/awesome-egui` (archived
@@ -165,42 +165,53 @@ is.
 
 ## 4. Measured: WeasyPrint vs Chrome on this deck
 
-Chrome command used for the comparison (cwd `ui/deck`):
+Both PDFs were regenerated from the current `deck.html` for this comparison (old renders were
+stale). Chrome command (cwd `ui/deck`):
 
 ```
 '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless \
   --disable-gpu --no-pdf-header-footer --virtual-time-budget=15000 \
-  --print-to-pdf=/tmp/chrome-current.pdf "file://$PWD/deck.html"
+  --print-to-pdf=/tmp/cmp-chrome.pdf "file://$PWD/deck.html"
 ```
 
-| Observation | WeasyPrint | Chrome `printToPDF` |
+| Observation | WeasyPrint 70 | Chrome `printToPDF` |
 |---|---|---|
 | page count | 15 | 15 |
-| body text on pages 5 and 6 | identical sentences | identical sentences, but the page footer is extracted **first** |
-| nested `.cols` / `.row3` / `.headrow` flexboxes | laid out, no table fallback needed | laid out, no table fallback needed |
-| ring overlay coordinates (page 5) | image bbox `40.5,87.8–558.8,411.7`; rings `44.1–554.4` | same box, same ring span |
+| word tokens, page 2 | 250 | 247 |
+| alphabetic content after stripping digits, page header and footer | identical | identical, except one extra/absent letter on pages 2, 13 and 14 |
+| extraction order | header/footer interleaved | header/footer extracted **first** |
+| nested `.cols` / `.row3` / `.headrow` flexboxes | laid out correctly | laid out correctly |
 | uniform scale | 14 mm bar = 39.69 pt; 9.0 pt text = 9.0 pt | 38.74 pt; 8.8 pt — a **2.4 %** shrink absent `preferCSSPageSize` |
-| wall time | **0.85 s** | several seconds |
+| wall time, three runs | 0.75 s, 0.75 s, 0.74 s | several seconds |
 
-`jev_compare` on the two renderers' outputs returns `same_fact` at p = 0.97 overall
-(`auto` decision), with extraction **order** called `different_facts` at p = 0.71 (a `review`
-decision) — which is exactly the footer-first artefact, and the reason any transcript fed to a
-grader must be sorted.
+The comparison is a **deterministic diff**, not a model judgement: `pymupdf` text per page,
+whitespace and digits normalised, then compared. Every remaining difference traced to
+letter-spacing splitting or joining a token (`D ESIGN` vs `DESIGN`, `cross-\nreferenced` vs
+`cross-referenced`) and to page-counter digits landing inside the text run. **Derived:** the two
+engines agree on this deck's text; only order and the uniform scale differ.
+
+(The earlier `jev_compare` result — `same_fact` p = 0.97 — was dropped from this document: both
+passages passed to it were my own summary prose, so it measured agreement between two sentences
+I wrote, not between the two PDFs. The measurement above replaces it.)
 
 **Derived:** the 2.4 % shrink is the deciding number. It silently changes every type size and
-every measured geometry on the page, against a WeasyPrint rebuild that is faster and
-text-identical. Do not migrate.
+every measured geometry on the page, against a WeasyPrint rebuild that is faster and produces
+the same text. Do not migrate.
 
-### What the deck's layout workarounds are actually for
+### The `table.figs` wrappers: incidental, not load-bearing
 
 The two `<table class="figs">` wrappers on the four-detail-panel slide (`deck.html:270,274`)
-are **not** flexbox workarounds. Substituting `div.row2` for them was tested: with
-`max-height` absent the slide overflows to a 16th page, and with
-`max-height: 47mm; object-fit: contain` it fits but clips the panel's right edge. The table
-supplies `max-width:100%; max-height:47mm; width:auto` (`deck.css:144`) — a constraint that
-cannot be expressed on a flex child without clipping. **Derived:** keep the tables; they are
-load-bearing. WeasyPrint 70 does handle `flex: 0 0 40%` and nested rows correctly, so flex
-remains fine everywhere else on the deck.
+carry `max-width:100%; max-height:47mm; width:auto` on their images (`deck.css:144`). An
+earlier note here claimed that rule "cannot be expressed on a flex child" — **that was wrong**,
+and the test that produced it was confounded: it substituted `.row2` (which sets
+`width: 100%` with no cap), so the images grew and the slide overflowed to a 16th page. The
+cause was the missing height cap, not flex.
+
+Retested in a scratch copy with the **same image rule** on the flex cells
+(`max-width:100%; max-height:47mm; width:auto; margin:0 auto`): 15 pages, and the rendered slide
+is visually identical to the table version. **Derived:** the table markup is incidental here;
+the height cap is what matters. It is left as-is because there is no reason to churn working
+markup, not because flex fails.
 
 ---
 
@@ -212,10 +223,22 @@ Confined to `ui/deck/`, no new dependency, no build step.
    `GeistMono-Variable.ttf` and the three `OFL-*.txt` files, declared with
    `@font-face` in `deck.css:1-6`. `h1`/`h2` now use `font-variation-settings: "wght" 620,
    "wdth" 118` with negative tracking (`deck.css:32-33`).
+
+   **Verified, because a `@font-face` declaring a variable file can silently render only its
+   default instance.** Rendered one 20 pt line of Archivo at three axis values and measured ink
+   coverage (dark pixels at 150 dpi, same text each time): `wght 400` → 3038, `wght 620` → 4011,
+   `wght 900` → 6083. Monotonic, so the arbitrary 620 is honoured rather than snapped.
+   `wdth 118` likewise produced a distinct `A-Semi-Expanded` instance. The deck's own PDF lists
+   `ArchivoV-Semi-Expanded` and `ArchivoV-Bold-Semi-Expanded`, matching the two weight/width
+   pairs the CSS asks for. **Conclusion: no static instances need to be built with
+   `fontTools.varLib.instancer`.**
 2. **Accent.** GitHub's `#58a6ff`/`#1f6feb` replaced throughout by ArtCraft's
    `#2d81ff`/`#1f66d0`; the ring glow became `rgba(45,129,255,.16)`.
 3. **Radius rule.** `.card`, `.bignum` and `figure.plain img` are square; `.chip` and the
-   region ring are `0.8 mm` (≈3 pt, the control radius).
+   region ring are `0.8 mm`, which is ≈3 px at 96 dpi (2.27 pt) — the control radius.
+   **Note:** only the *blue* was swapped. GitHub's status colours (`#d29922` amber,
+   `#3fb950` green, `#f85149` red) are still in `deck.css`; they were deliberately left
+   alone, since they encode outcome (agreed / forced) rather than brand.
 4. **Rings.** `rings.py` measures the live page and rewrites thirteen percentage-positioned
    rings. Its divisor is the **captured image** (1000 CSS px), not the page's scroll height —
    dividing by `scrollHeight` shifted every ring upward, which was a real bug caught and
@@ -224,26 +247,34 @@ Confined to `ui/deck/`, no new dependency, no build step.
    this page margin the top-left mark collided with the accent bar and the effect read as
    decoration, not registration. Recorded here so it is not re-attempted blindly.
 
-Screenshots: all 19 images referenced by the deck are regenerated from the live app at
-1600×1000, device scale 2; 15 unreferenced `shots/*.jpg` were deleted.
+Screenshots: `ui/deck/shots/` holds 19 `.jpg` files, `deck.html` references 19 unique paths,
+and every referenced path resolves — no missing, no unreferenced. They are 1600×1000 CSS px
+captured at device scale 2 (3200×2000). They were re-captured during this work; a set of
+unreferenced shots from an earlier draft was deleted at the same time.
 
 ### Honesty check on printed numbers
 
-Every number the deck prints was audited against `/api/report` JSON:
+The **deterministic** check is a shell assertion: the report JSON, formatted by the app's own
+rounding rule (`ui/web/app.js:40`, `n2 = (v) => Number(v).toFixed(2)`), must equal the strings
+in the deck's extracted text. That comparison covers the headline values the deck prints:
 
 | Deck prints | Source of record | Result |
 |---|---|---|
 | `1.00` final score, `0.65` target, `2/6` rounds | `final.alignment_score` = 1, `config.alignment_threshold`, `rounds_taken`/`max_rounds` | ok |
 | `0.15` / `0.1536` / `1.01` / `2/2` (forced run) | `final.alignment_score` = 0.1536, `config` target 1.01, max 2 | ok |
 | `392` tokens | Σ every span's `in_tok` + `out_tok` = 336 + 56 | ok |
-| `5.20 ms` | `telemetry.wall_clock_s` = 0.0052 | ok |
+| `5.20 ms` | `telemetry.wall_clock_s` = 0.0052 × 1000 | ok |
 | `2` claims / `2` challenges / `2` ideas / `2` merges | `final.claims_total` etc. | ok |
 
-`jev_audit` escalated one record (`1.00`, p_wrong 0.99) while the formatting rule was absent
-from the supplied source; with the derivation chain stated explicitly — `final.alignment_score`
-= 1, `ui/web/app.js:40` defines `n2 = (v) => Number(v).toFixed(2)`, the live app renders
-`1.00` — the same record returns `pass` at p_wrong 0.08. **Derived:** the deck and the app print
-identical strings for the same run, verified by reading both.
+`jev_audit` was run as a **secondary** signal and escalated one record (`1.00`, p_wrong 0.99)
+while the formatting rule was absent from the supplied source; with the derivation chain stated
+explicitly, the same record returns `pass` at p_wrong 0.08. That is a property of how much the
+source text spells out, not independent evidence — which is why the assertion above, not the
+audit, is the check that counts. The deck and the app print identical strings for the same run,
+verified by reading both.
+
+This does **not** cover every number in the document: prose figures (the 2.4 % scale, the
+0.75 s build time, page counts) come from the measurements in §4.
 
 ---
 
